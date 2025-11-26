@@ -14,8 +14,6 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // stage: 'username' → just entered name
-  // stage: 'pin'      → username confirmed, asking for PIN
   const [stage, setStage] = useState<'username' | 'pin'>('username');
 
   async function handleSubmit(e: React.FormEvent) {
@@ -52,7 +50,6 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
       return;
     }
 
-    // stage === 'pin'
     if (!pin.trim()) {
       setStatus('Please enter your PIN.');
       return;
@@ -95,18 +92,28 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
 
   return (
     <div className="w-full max-w-xl mx-auto px-2">
-      <div className="bg-slate-900/70 border border-slate-700 rounded-2xl p-5 shadow-xl">
-        <h2 className="text-xl font-bold mb-3 text-center">Team Login</h2>
-        <p className="text-xs text-slate-300 text-center mb-3">
-          First, enter your name. Then we&apos;ll ask for your secret PIN.
+      <div className="bg-zinc-950 border border-white/10 rounded-2xl p-6 shadow-2xl">
+        {/* Title */}
+        <h2 className="text-2xl font-bold mb-3 text-center text-white">
+          Sign In
+        </h2>
+        <p className="text-xs text-white/50 text-center mb-4">
+          Enter your name, then your secret PIN.
         </p>
-        <form onSubmit={handleSubmit} className="space-y-3">
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Player Name */}
           <div className="space-y-1">
-            <label className="text-xs text-slate-300">
+            <label className="text-xs text-white/60">
               {stage === 'username' ? 'Player Name' : 'Player Name (locked)'}
             </label>
             <input
-              className="w-full rounded-xl border border-slate-600 bg-slate-900 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-lime-400 disabled:opacity-60"
+              className="
+                w-full rounded-xl border border-white/10 
+                bg-zinc-900 px-3 py-2 text-white 
+                focus:outline-none focus:ring-2 focus:ring-lime-400 
+                disabled:opacity-60
+              "
               placeholder="e.g., Brooks"
               value={username}
               onChange={e => setUsername(e.target.value)}
@@ -114,11 +121,16 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
             />
           </div>
 
+          {/* PIN */}
           {stage === 'pin' && (
             <div className="space-y-1">
-              <label className="text-xs text-slate-300">PIN</label>
+              <label className="text-xs text-white/60">PIN</label>
               <input
-                className="w-full rounded-xl border border-slate-600 bg-slate-900 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-lime-400"
+                className="
+                  w-full rounded-xl border border-white/10 
+                  bg-zinc-900 px-3 py-2 text-white
+                  focus:outline-none focus:ring-2 focus:ring-lime-400
+                "
                 placeholder="4-digit PIN"
                 type="tel"
                 inputMode="numeric"
@@ -129,36 +141,47 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
             </div>
           )}
 
+          {/* Buttons */}
           <div className="flex gap-2">
             {stage === 'pin' && (
               <button
                 type="button"
                 onClick={reset}
-                className="flex-1 rounded-xl border border-slate-600 text-slate-200 py-2 text-sm"
                 disabled={loading}
+                className="
+                  flex-1 rounded-xl border border-white/20
+                  bg-black text-white/80 py-2 text-sm
+                  hover:text-white hover:bg-white/10 transition
+                  disabled:opacity-50
+                "
               >
                 Back
               </button>
             )}
+
             <button
               type="submit"
               disabled={loading}
-              className={`${
-                stage === 'username' ? 'w-full' : 'flex-1'
-              } rounded-xl bg-lime-400 text-slate-950 font-semibold py-2 text-sm shadow-md active:scale-95 disabled:opacity-60`}
+              className={`
+                ${stage === 'username' ? 'w-full' : 'flex-1'}
+                rounded-xl bg-lime-400 text-black font-semibold 
+                py-2 text-sm shadow-md active:scale-95 transition
+                ${loading ? 'opacity-60' : 'hover:bg-lime-300'}
+              `}
             >
               {loading
                 ? stage === 'username'
                   ? 'Checking…'
-                  : 'Logging in…'
+                  : 'Signing in…'
                 : stage === 'username'
                 ? 'Next'
                 : 'Continue'}
             </button>
           </div>
 
+          {/* Error message */}
           {status && (
-            <p className="text-sm text-center text-red-300">{status}</p>
+            <p className="text-sm text-center text-red-400">{status}</p>
           )}
         </form>
       </div>

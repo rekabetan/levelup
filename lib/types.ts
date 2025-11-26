@@ -3,6 +3,7 @@ export type User = {
   id: string;
   username: string;
   handle?: string | null;
+  weekly_goal?: number | null; // in minutes
 };
 
 export type Entry = {

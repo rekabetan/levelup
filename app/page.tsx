@@ -7,9 +7,28 @@ import SignInCard from '@/components/auth/SignInCard';
 import Dashboard from '@/components/dashboard/Dashboard';
 import type { User } from '@/lib/types';
 
+import FloatingActionButton from '@/components/ui/FloatingActionButton';
+import LogTimeSheet from '@/components/logs/LogTimeSheet';
+
+function ArrowUpIcon() {
+  return (
+    <svg
+      className="inline-block text-lime-400 align-middle -ml-[2px]"
+      width="24"
+      height="24"
+      viewBox="0 0 24 22"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M9 20V10H4L12 1L20 10H15V20H9Z" />
+    </svg>
+  );
+}
+
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [isLogSheetOpen, setIsLogSheetOpen] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('levelup_user');
@@ -24,6 +43,18 @@ export default function Home() {
     setLoaded(true);
   }, []);
 
+  // Disable scroll behind the sheet when it's open
+  useEffect(() => {
+    if (!isLogSheetOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isLogSheetOpen]);
+
   const handleLogout = () => {
     localStorage.removeItem('levelup_user');
     setUser(null);
@@ -31,16 +62,20 @@ export default function Home() {
 
   if (!loaded) return null;
 
+  const isAuthed = !!user;
+  const canLogTime = isAuthed;
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen flex flex-col bg-black text-white">
       {/* 🔥 TOP HEADER */}
-      <header className="sticky top-0 z-20 w-full py-4 bg-slate-900/80 backdrop-blur border-b border-slate-800 shadow-md flex items-center justify-between px-4">
+      <header className="sticky top-0 z-20 w-full py-4 bg-black/80 backdrop-blur border-b border-white/10 shadow-md flex items-center justify-between px-4">
         {/* Left spacer to balance layout */}
         <div className="w-8" />
 
         {/* Center title */}
-        <h1 className="text-3xl font-black text-center tracking-tight flex-1">
-          Level<span className="text-lime-400">Up</span>
+        <h1 className="text-3xl font-black flex items-center justify-center leading-none">
+          <span className="leading-none">level</span>
+          <ArrowUpIcon />
         </h1>
 
         {/* Right: profile button if logged in */}
@@ -53,12 +88,29 @@ export default function Home() {
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col items-center justify-center p-4">
-        {user ? (
+        {isAuthed ? (
           <Dashboard user={user} onLogout={handleLogout} />
         ) : (
           <SignInCard onSignedIn={setUser} />
         )}
       </main>
+
+      {/* Floating + button + sheet (only when logged in) */}
+      {canLogTime && (
+        <>
+          {!isLogSheetOpen && (
+            <FloatingActionButton onClick={() => setIsLogSheetOpen(true)} />
+          )}
+
+          {user && (
+            <LogTimeSheet
+              isOpen={isLogSheetOpen}
+              onClose={() => setIsLogSheetOpen(false)}
+              userId={user.id}
+            />
+          )}
+        </>
+      )}
     </div>
   );
 }

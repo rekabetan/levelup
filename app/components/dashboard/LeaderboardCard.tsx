@@ -21,7 +21,7 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
         const data = await res.json();
         setEntries(data.entries || []);
       } catch {
-        // ignore
+        // ignore errors
       } finally {
         setLoading(false);
       }
@@ -36,17 +36,29 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
   ];
 
   return (
-    <div className="bg-slate-900/70 border border-slate-700 rounded-2xl p-4 shadow-lg">
-      <div className="flex mb-3 rounded-full bg-slate-950/70 border border-slate-700 p-1">
-        {tabs.map(tab => (
+    <div
+      className="
+        bg-white/5 backdrop-blur-xl
+        border border-white/10
+        rounded-2xl p-4
+        shadow-2xl shadow-black/70
+        text-white
+      "
+    >
+      {/* Period Tabs */}
+      <div className="flex mb-3 rounded-full bg-black/60 border border-white/10 p-1">
+        {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setPeriod(tab.key)}
-            className={`flex-1 rounded-full text-xs py-1 ${
-              period === tab.key
-                ? 'bg-lime-400 text-slate-950 font-bold'
-                : 'text-slate-300'
-            }`}
+            className={`
+              flex-1 rounded-full text-xs py-1 transition
+              ${
+                period === tab.key
+                  ? 'bg-white/10 backdrop-blur-xl border border-white/10 shadow-md text-white font-semibold'
+                  : 'text-white/60 hover:bg-white/5'
+              }
+            `}
           >
             {tab.label}
           </button>
@@ -54,9 +66,9 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
       </div>
 
       {loading ? (
-        <p className="text-sm text-center text-slate-300">Loading…</p>
+        <p className="text-sm text-center text-white/70">Loading…</p>
       ) : entries.length === 0 ? (
-        <p className="text-sm text-center text-slate-400">
+        <p className="text-sm text-center text-white/60">
           No minutes logged yet. Be the first!
         </p>
       ) : (
@@ -69,23 +81,32 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
             return (
               <li
                 key={e.username}
-                className={`flex justify-between items-center rounded-xl px-3 py-2 border ${
-                  isMe
-                    ? 'border-lime-400 bg-slate-900'
-                    : 'border-slate-700 bg-slate-950/60'
-                }`}
+                className={`
+                  flex justify-between items-center rounded-xl px-3 py-2
+                  ${
+                    isMe
+                      ? 'bg-white/5 backdrop-blur-xl border border-white/10 shadow-md text-white font-semibold'
+                      : 'bg-black/60 text-white'
+                  }
+                `}
               >
                 <div className="flex items-center gap-2">
                   <span className="w-6 text-center text-lg">
                     {medal || idx + 1}
                   </span>
-                  <span className={isMe ? 'font-bold' : ''}>
-                    {e.username}
+
+                  <div className="flex items-center gap-1">
                     {isMe && (
-                      <span className="text-xs ml-1 text-lime-300">(You)</span>
+                      <span className="text-lime-400 text-sm leading-none">
+                        ★
+                      </span>
                     )}
-                  </span>
+                    <span className={isMe ? 'font-semibold' : ''}>
+                      {e.username}
+                    </span>
+                  </div>
                 </div>
+
                 <span className="text-sm font-semibold">
                   {e.total_minutes} min
                 </span>

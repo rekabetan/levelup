@@ -3,222 +3,372 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-
-type User = {
-  id: string;
-  username: string;
-  handle?: string | null;
-};
-
-type LogEntry = {
-  id: string;
-  minutes: number;
-  category: string | null;
-  comment: string | null;
-  created_at: string;
-};
+import type { User, LogEntry } from '@/lib/types';
+import { computeWeeklyStreak } from '@/lib/streak';
 
 export default function ProfilePage() {
+  // ---------- Core state ----------
   const [user, setUser] = useState<User | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [loadingLogs, setLoadingLogs] = useState(true);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
-  const [storedRaw, setStoredRaw] = useState<string | null>(null); // debug
+  const [loadingLogs, setLoadingLogs] = useState(false);
 
-  // 1) Read localStorage once on the client
+  // Stable "now" value per render (fine to recompute)
+  const now = new Date();
+
+  // Calendar view state – MUST live above any early returns
+  const [viewYear, setViewYear] = useState(() => now.getFullYear());
+  const [viewMonth, setViewMonth] = useState(() => now.getMonth()); // 0 = Jan
+
+  // ---------- Effects ----------
+  // Load user from localStorage
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const stored = window.localStorage.getItem('levelup_user');
-    console.log('[Profile] stored levelup_user =', stored);
-    setStoredRaw(stored); // so we can see it in the UI
-
+    const stored = localStorage.getItem('levelup_user');
     if (stored) {
       try {
-        const parsed: User = JSON.parse(stored);
-        setUser(parsed);
-      } catch (err) {
-        console.log('[Profile] Failed to parse stored user', err);
-        setUser(null);
+        setUser(JSON.parse(stored));
+      } catch {
+        localStorage.removeItem('levelup_user');
       }
-    } else {
-      setUser(null);
     }
-
-    setHydrated(true);
+    setLoaded(true);
   }, []);
 
-  // 2) Load logs once user is known
+  // Fetch logs for this user
   useEffect(() => {
     if (!user) return;
 
-    const userId = user.id;
-
-    async function loadLogs() {
-      setLoadingLogs(true);
-      setError(null);
+    const loadLogs = async () => {
       try {
-        const res = await fetch(`/api/logs?userId=${userId}`);
+        setLoadingLogs(true);
+        const res = await fetch(`/api/logs?userId=${user.id}`);
         const data = await res.json();
-        if (!res.ok) {
-          setError(data.error || 'Could not load activity.');
-        } else {
-          setLogs(data.logs || []);
-        }
-      } catch {
-        setError('Network error');
+        setLogs(data.logs || []);
+      } catch (err) {
+        console.error('Failed to load logs for profile', err);
       } finally {
         setLoadingLogs(false);
       }
-    }
+    };
 
     loadLogs();
-  }, [user]);
+  }, [user?.id, user]);
 
-  // 3) Delete a log
-  async function handleDelete(logId: string) {
-    if (!user) return;
-    if (!confirm('Delete this log?')) return;
+  // ---------- Early returns (AFTER all hooks) ----------
+  if (!loaded) return null;
 
-    const userId = user.id;
-
-    setDeletingId(logId);
-    setError(null);
-    try {
-      const res = await fetch('/api/logs', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ logId, userId }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Could not delete log.');
-      } else {
-        setLogs(prev => prev.filter(l => l.id !== logId));
-      }
-    } catch {
-      setError('Network error');
-    } finally {
-      setDeletingId(null);
-    }
-  }
-
-  // Wait until we've read localStorage
-  if (!hydrated) {
-    return null;
-  }
-
-  // If no user after hydration, show a simple "not logged in" with debug
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
-        <div className="text-center p-4">
-          <p className="text-sm text-slate-300 mb-2">Not logged in on this device.</p>
-          <p className="text-[10px] text-slate-500 break-all mb-4">
-            Debug stored levelup_user: {storedRaw ?? 'null'}
-          </p>
-          <Link href="/" className="text-sm text-lime-300 underline">
-            Go to Login
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-lg">You&apos;re not signed in.</p>
+          <Link
+            href="/"
+            className="inline-flex items-center rounded-full border border-white/20 px-4 py-2 text-sm font-medium hover:bg-white/10 transition"
+          >
+            ← Back to LevelUp
           </Link>
         </div>
       </div>
     );
   }
 
-  // Logged in: render your real profile
+  // ---------- Streak / Initial ----------
+  const weeklyStreak = computeWeeklyStreak(logs);
+  const isOnActiveStreak = weeklyStreak > 0;
+
+  const initial =
+    (user.username && user.username.trim()[0]?.toUpperCase()) ||
+    (user.handle && user.handle.replace('@', '')[0]?.toUpperCase()) ||
+    '?';
+
+  // ---------- Monthly Calendar Data (based on viewYear/viewMonth) ----------
+  const year = viewYear;
+  const month = viewMonth;
+
+  const firstOfMonth = new Date(year, month, 1);
+  const monthName = firstOfMonth.toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const startWeekday = firstOfMonth.getDay(); // 0 (Sun) - 6 (Sat)
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const todayDate = now.getDate();
+  const isViewingCurrentMonth =
+    viewYear === now.getFullYear() && viewMonth === now.getMonth();
+
+  // Aggregate total minutes per day for the viewed month
+  const minutesByDate: Record<string, number> = {};
+  for (const log of logs) {
+    const d = new Date(log.created_at);
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
+      minutesByDate[key] = (minutesByDate[key] || 0) + log.minutes;
+    }
+  }
+
+  // Build calendar cells (includes leading blanks)
+  type CalendarCell = {
+    day: number;
+    key: string;
+    hasEnough: boolean;
+    isToday: boolean;
+  } | null;
+
+  const calendarCells: CalendarCell[] = [];
+
+  // Leading empty cells before day 1
+  for (let i = 0; i < startWeekday; i++) {
+    calendarCells.push(null);
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateObj = new Date(year, month, day);
+    const key = dateObj.toISOString().slice(0, 10);
+    const totalMinutes = minutesByDate[key] || 0;
+    const hasEnough = totalMinutes >= 15;
+    const isToday = isViewingCurrentMonth && day === todayDate;
+
+    calendarCells.push({ day, key, hasEnough, isToday });
+  }
+
+  // ---------- Month Navigation Handlers ----------
+  const goToPreviousMonth = () => {
+    const prev = new Date(viewYear, viewMonth - 1, 1);
+    setViewYear(prev.getFullYear());
+    setViewMonth(prev.getMonth());
+  };
+
+  const goToNextMonth = () => {
+    const next = new Date(viewYear, viewMonth + 1, 1);
+    const currentMonthStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1
+    );
+    if (next > currentMonthStart) return; // don’t go into the future
+    setViewYear(next.getFullYear());
+    setViewMonth(next.getMonth());
+  };
+
+  const resetToCurrentMonth = () => {
+    setViewYear(now.getFullYear());
+    setViewMonth(now.getMonth());
+  };
+
+  const isAtCurrentMonth =
+    viewYear === now.getFullYear() && viewMonth === now.getMonth();
+
+  // ---------- Render ----------
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-black text-white flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-20 w-full py-4 bg-slate-900/80 backdrop-blur border-b border-slate-800 shadow-md flex items-center justify-between px-4">
-        <Link href="/" className="text-sm text-slate-300">
-          ← Home
+      <header className="sticky top-0 z-20 w-full py-4 bg-black/80 backdrop-blur border-b border-white/10 shadow flex items-center justify-between px-4">
+        {/* Back button */}
+        <Link
+          href="/"
+          className="text-sm text-white/70 hover:text-white flex items-center gap-1"
+        >
+          <span className="text-lg">←</span>
+          <span>Back</span>
         </Link>
 
-        <h1 className="text-lg font-bold tracking-tight text-center flex-1">
-          {user.username}
-          {user.handle && (
-            <span className="text-sm text-slate-400 ml-1">
-              (@{user.handle})
-            </span>
-          )}
-        </h1>
+        {/* Title */}
+        <h1 className="text-lg font-semibold tracking-tight">Profile</h1>
 
-        <div className="w-10" /> {/* spacer */}
+        {/* Sign Out button */}
+        <button
+          onClick={() => {
+            localStorage.removeItem('levelup_user');
+            window.location.href = '/';
+          }}
+          className="
+            text-xs font-medium 
+            px-3 py-1.5 
+            rounded-lg 
+            border border-white/20 
+            text-white/80 
+            hover:text-white hover:bg-white/10 
+            transition
+          "
+        >
+          Sign Out
+        </button>
       </header>
 
+      {/* MAIN CONTENT */}
+      <main className="flex-1 w-full px-6 py-6 max-w-lg mx-auto space-y-10">
+        {/* -------- Avatar / Name / Streak -------- */}
+        <section className="flex flex-col items-center text-center relative">
+          {/* Avatar + Badge */}
+          <div className="relative mb-6">
+            <div
+              className={`
+                flex h-24 w-24 items-center justify-center rounded-full
+                border border-white/10 bg-zinc-900 text-4xl font-semibold
+                ${
+                  isOnActiveStreak
+                    ? 'ring-2 ring-lime-400 ring-offset-2 ring-offset-black'
+                    : 'ring-2 ring-zinc-700 ring-offset-2 ring-offset-black'
+                }
+              `}
+            >
+              {initial}
+            </div>
 
-      <main className="flex-1 p-4 flex flex-col gap-4">
-        {/* Activity list */}
-        <div className="w-full max-w-xl mx-auto px-2 flex-1">
-          <div className="bg-slate-900/70 border border-slate-700 rounded-2xl p-4 shadow-lg h-full flex flex-col">
-            <h2 className="text-sm font-bold mb-3">Recent Activity</h2>
+            {/* Parallelogram Badge */}
+            <div
+              className="
+                absolute -bottom-4 left-1/2 -translate-x-1/2
+                h-8 px-2
+                bg-lime-400 text-black
+                font-bold text-xs
+                flex items-center gap-1
+                shadow-lg
+                [transform:skew(-12deg)]
+                rounded-sm
+              "
+            >
+              <div className="[transform:skew(12deg)] flex items-center gap-1">
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 24 22"
+                  fill="currentColor"
+                  aria-hidden="true"
+                  className="text-black"
+                >
+                  <path d="M9 20V10H4L12 1L20 10H15V20H9Z" />
+                </svg>
 
-            {loadingLogs ? (
-              <p className="text-sm text-slate-300 text-center">Loading…</p>
-            ) : logs.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center">
-                No logs yet. Go put in some work!
-              </p>
-            ) : (
-              <ul className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-                {logs.map(log => {
-                  const created = new Date(log.created_at);
-                  const prettyDate = created.toLocaleDateString(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                  });
-                  const prettyTime = created.toLocaleTimeString(undefined, {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  });
+                <span className="text-lg">{weeklyStreak}</span>
+              </div>
+            </div>
+          </div>
 
-                  return (
-                    <li
-                      key={log.id}
-                      className="flex items-start justify-between rounded-xl border border-slate-700 bg-slate-950/70 px-3 py-2 text-xs"
-                    >
-                      <div className="flex-1 mr-2">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-lime-300 font-bold">
-                            {log.minutes} min
-                          </span>
-                          {log.category && (
-                            <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 border border-slate-600">
-                              {log.category}
-                            </span>
-                          )}
-                        </div>
-                        {log.comment && (
-                          <p className="text-[11px] text-slate-200">
-                            {log.comment}
-                          </p>
-                        )}
-                        <p className="text-[10px] text-slate-500 mt-1">
-                          {prettyDate} · {prettyTime}
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={() => handleDelete(log.id)}
-                        disabled={deletingId === log.id}
-                        className="text-[11px] text-red-300 border border-red-400/60 rounded-full px-2 py-1 hover:bg-red-500/10 disabled:opacity-40"
-                      >
-                        {deletingId === log.id ? 'Deleting…' : 'Delete'}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-
-            {error && (
-              <p className="text-xs text-center text-red-300 mt-2">{error}</p>
+          {/* Name & handle */}
+          <div className="flex flex-col items-center space-y-1 mb-2">
+            <p className="text-4xl font-semibold">{user.username}</p>
+            {user.handle && (
+              <p className="text-lg text-white/60">@{user.handle}</p>
             )}
           </div>
-        </div>
+        </section>
+
+        {/* -------- HISTORY / CALENDAR -------- */}
+        <section>
+          {/* History + Month + Nav + Today */}
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-3xl font-bold text-white">History</h2>
+
+            <div className="flex items-center gap-2 text-sm font-semibold text-white/70">
+              {/* Previous month */}
+              <button
+                type="button"
+                onClick={goToPreviousMonth}
+                className="w-7 h-7 flex items-center justify-center rounded-full border border-white/20 hover:bg-white/10 hover:text-white transition"
+              >
+                ‹
+              </button>
+
+              {/* Month label */}
+              <span className="min-w-[140px] text-center text-white/80">
+                {monthName}
+              </span>
+
+              {/* Next month */}
+              <button
+                type="button"
+                onClick={goToNextMonth}
+                disabled={isAtCurrentMonth}
+                className={`
+                  w-7 h-7 flex items-center justify-center rounded-full border border-white/20 transition
+                  ${
+                    isAtCurrentMonth
+                      ? 'opacity-30 cursor-not-allowed'
+                      : 'hover:bg-white/10 hover:text-white'
+                  }
+                `}
+              >
+                ›
+              </button>
+
+              {/* Today reset */}
+              <button
+                type="button"
+                onClick={resetToCurrentMonth}
+                disabled={isAtCurrentMonth}
+                className={`
+                  ml-1 px-3 py-1 rounded-full border border-white/20 text-xs font-medium transition
+                  ${
+                    isAtCurrentMonth
+                      ? 'opacity-30 cursor-not-allowed text-white/40'
+                      : 'text-white/80 hover:text-white hover:bg-white/10'
+                  }
+                `}
+              >
+                Today
+              </button>
+            </div>
+          </div>
+
+          {/* CALENDAR CARD */}
+          <div className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4">
+            {loadingLogs ? (
+              <p className="text-base text-white/60">
+                Loading this month&apos;s activity…
+              </p>
+            ) : (
+              <>
+                {/* Weekday headers */}
+                <div className="grid grid-cols-7 gap-2 mb-3 text-center text-sm font-medium text-white/60">
+                  <span>Sun</span>
+                  <span>Mon</span>
+                  <span>Tue</span>
+                  <span>Wed</span>
+                  <span>Thu</span>
+                  <span>Fri</span>
+                  <span>Sat</span>
+                </div>
+
+                {/* Calendar grid */}
+                <div className="grid grid-cols-7 gap-2 text-base">
+                  {calendarCells.map((cell, idx) => {
+                    if (!cell) {
+                      return <div key={idx} className="h-10" />;
+                    }
+
+                    const { day, hasEnough, isToday } = cell;
+
+                    const base =
+                      'flex items-center justify-center h-10 w-10 rounded-full mx-auto font-semibold transition';
+
+                    const highlight = hasEnough
+                      ? 'outline outline-2 outline-lime-400'
+                      : 'bg-zinc-900 text-white/80';
+
+                    const todayState = isToday
+                      ? 'bg-lime-400 text-black'
+                      : '';
+
+                    return (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-center"
+                      >
+                        <div className={`${base} ${highlight} ${todayState}`}>
+                          {day}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        </section>
       </main>
     </div>
   );
