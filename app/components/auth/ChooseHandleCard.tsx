@@ -1,4 +1,3 @@
-// app/components/auth/ChooseHandleCard.tsx
 'use client';
 
 import { useState, type FormEvent } from 'react';
@@ -36,14 +35,12 @@ export default function ChooseHandleCard({ user }: ChooseHandleCardProps) {
       if (!res.ok) {
         setStatus(data.error || 'Error saving handle');
       } else {
-        // Update local user in localStorage so refresh keeps it
         const updated: UserLike = {
           id: data.id,
           username: data.username,
           handle: data.handle,
         };
         localStorage.setItem('levelup_user', JSON.stringify(updated));
-        // Hard reload to let Home re-read updated user
         window.location.reload();
       }
     } catch {
@@ -54,33 +51,56 @@ export default function ChooseHandleCard({ user }: ChooseHandleCardProps) {
   }
 
   return (
-    <div className="bg-slate-900/70 border border-slate-700 rounded-2xl p-4 shadow-lg space-y-3">
-      <h2 className="text-lg font-bold text-center">Choose your LevelUp name</h2>
-      <p className="text-xs text-slate-300 text-center">
-        This is how you&apos;ll show up on the leaderboard.
+    <div className="bg-black border border-lime-400/30 rounded-2xl p-5 shadow-[0_0_18px_-4px_rgba(192,255,0,0.25)] space-y-4">
+      <h2 className="text-xl font-bold text-center text-white tracking-tight">
+        Choose your LevelUp name
+      </h2>
+
+      <p className="text-xs text-center text-white/60">
+        This is how you’ll appear on the leaderboard.
       </p>
-      <form onSubmit={submitHandle} className="space-y-3">
+
+      <form onSubmit={submitHandle} className="space-y-4">
         <div className="space-y-1">
-          <label className="text-xs text-slate-300">Username</label>
-          <div className="flex items-center gap-1">
-            <span className="text-slate-400 text-sm">@</span>
+          <label className="text-xs text-white/60">Username</label>
+
+          <div className="flex items-center gap-2">
+            <span className="text-white/50 text-sm">@</span>
+
             <input
-              className="flex-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm"
-              placeholder="username"
+              className="
+                flex-1 rounded-xl 
+                border border-white/10 
+                bg-neutral-900 
+                px-3 py-2 
+                text-sm text-white
+                placeholder-white/30
+                focus:border-lime-400 focus:outline-none
+              "
+              placeholder="yourname"
               value={handle}
               onChange={e => setHandle(e.target.value)}
             />
           </div>
         </div>
+
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-xl bg-lime-400 text-slate-950 font-semibold py-2 text-sm shadow-md active:scale-95 disabled:opacity-60"
+          className="
+            w-full rounded-xl 
+            bg-lime-400 text-black font-semibold 
+            py-2 text-sm 
+            shadow-md shadow-lime-400/20
+            active:scale-95 
+            disabled:opacity-50
+          "
         >
-          {loading ? 'Saving…' : 'Save username'}
+          {loading ? 'Saving…' : 'Save Username'}
         </button>
+
         {status && (
-          <p className="text-xs text-center text-red-300">{status}</p>
+          <p className="text-xs text-center text-red-400">{status}</p>
         )}
       </form>
     </div>

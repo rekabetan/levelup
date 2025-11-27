@@ -108,16 +108,16 @@ export default function LogTimeSheet({
       {/* Sheet */}
       <div
         className="
-          relative z-40 w-full max-w-md
-          h-[75vh] overflow-y-auto
-          bg-zinc-950 shadow-2xl
-          rounded-t-3xl sm:rounded-3xl
-          px-5 pt-4 pb-6
+          relative z-50 w-full max-w-md
+          rounded-t-3xl
+          bg-white/5 backdrop-blur-xl
           border border-white/10
+          shadow-[0_-20px_60px_rgba(0,0,0,0.9)]
+          px-6 pt-5 pb-7
         "
       >
         {/* Header */}
-        <div className="mb-4 flex items-center justify-center">
+        <div className="mb-12 flex items-center justify-center">
           <h2 className="text-xl font-semibold text-white">
             Log Time
           </h2>
@@ -126,15 +126,6 @@ export default function LogTimeSheet({
         <form className="space-y-6" onSubmit={handleSubmit}>
           {/* Minutes */}
           <div>
-            <div className="flex items-baseline justify-between mb-3">
-              <label className="block text-sm font-medium text-white/80">
-                Minutes
-              </label>
-              <span className="text-base font-semibold text-lime-400">
-                {displayMinutes} min
-              </span>
-            </div>
-
             <div className="grid grid-cols-3 gap-2 mb-3">
               {PRESET_MINUTES.map((m) => {
                 const isActive = !useCustom && activePreset === m;
@@ -147,7 +138,7 @@ export default function LogTimeSheet({
                       'rounded-xl px-3 py-3 text-sm font-medium transition ' +
                       (isActive
                         ? 'bg-lime-400 text-black shadow-md'
-                        : 'bg-zinc-900 text-white/80 hover:bg-zinc-800')
+                        : 'outline outline-1 outline-zinc-800 text-white/80 hover:bg-zinc-800')
                     }
                   >
                     {m}m
@@ -160,18 +151,18 @@ export default function LogTimeSheet({
               type="button"
               onClick={handleCustomClick}
               className={
-                'w-full rounded-xl px-3 py-3 text-sm font-medium transition ' +
+                'mt-2 w-full rounded-xl px-3 py-3 text-sm font-medium transition ' +
                 (useCustom
                   ? 'bg-lime-400 text-black shadow-md'
-                  : 'bg-zinc-900 text-white/80 hover:bg-zinc-800')
+                  : 'outline outline-1 outline-zinc-800 text-white/80 hover:bg-zinc-800')
               }
             >
               {useCustom ? 'Custom minutes selected' : 'Custom minutes'}
             </button>
 
             {useCustom && (
-              <div className="mt-3">
-                <label className="block text-xs font-medium text-white/60 mb-1">
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-white/60 mb-1">
                   Enter custom minutes
                 </label>
                 <input
@@ -183,7 +174,7 @@ export default function LogTimeSheet({
                     setCustomMinutes(e.target.value.replace(/[^0-9]/g, ''))
                   }
                   className="
-                    w-full rounded-lg bg-zinc-900 px-3 py-2 text-sm text-white
+                    mt-2 w-full rounded-lg outline outline-1 outline-zinc-800 px-3 py-3 text-sm text-white
                     outline-none ring-1 ring-white/10 focus:ring-lime-400
                   "
                   placeholder="e.g. 35"
@@ -194,7 +185,7 @@ export default function LogTimeSheet({
 
           {/* Category (required) */}
           <div>
-            <label className="block text-sm font-medium text-white/80 mb-1">
+            <label className="block text-md font-medium text-white/80 mb-1">
               Category <span className="text-red-500">*</span>
             </label>
             <select
@@ -205,8 +196,8 @@ export default function LogTimeSheet({
                 )
               }
               className="
-                w-full rounded-lg bg-zinc-900 px-3 py-2 text-sm text-white
-                outline-none ring-1 ring-white/10 focus:ring-lime-400
+                mt-2 w-full rounded-lg outline-1 outline-zinc-800 px-3 py-3 text-sm text-white
+                ring-1 ring-white/10 focus:ring-lime-400
               "
             >
               <option value="">Select a category</option>
@@ -220,7 +211,7 @@ export default function LogTimeSheet({
 
           {/* Comments */}
           <div>
-            <label className="block text-sm font-medium text-white/80 mb-1">
+            <label className="block text-md font-medium text-white/80 mb-1">
               Comments
             </label>
             <textarea
@@ -228,7 +219,7 @@ export default function LogTimeSheet({
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               className="
-                w-full resize-none rounded-lg bg-zinc-900 px-3 py-2 text-sm text-white
+                mt-2 w-full resize-none rounded-lg px-3 py-3 text-sm text-white
                 outline-none ring-1 ring-white/10 focus:ring-lime-400
               "
               placeholder="e.g., Tee work, line drives to the opposite field"
@@ -242,7 +233,7 @@ export default function LogTimeSheet({
               onClick={onClose}
               className="
                 flex-1 rounded-xl border border-white/20
-                bg-black px-4 py-3 text-sm font-semibold text-white
+                px-4 py-3 text-sm font-semibold text-white
                 hover:bg-zinc-900 transition
               "
               disabled={saving}

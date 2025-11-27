@@ -30,18 +30,43 @@ export default function Home() {
   const [loaded, setLoaded] = useState(false);
   const [isLogSheetOpen, setIsLogSheetOpen] = useState(false);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('levelup_user');
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch {
-        // if parsing fails, clear bad data
-        localStorage.removeItem('levelup_user');
+useEffect(() => {
+  async function load() {
+    try {
+      const stored = localStorage.getItem('levelup_user');
+      if (!stored) {
+        setLoaded(true);
+        return;
       }
+
+      const parsed = JSON.parse(stored) as User;
+
+      // Optional: show cached user immediately
+      setUser(parsed);
+
+      // 🔥 Re-sync from backend so weekly_goal stays in sync across devices
+      const res = await fetch(`/api/profile?userId=${parsed.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        const freshUser = data.user as User;
+
+        setUser(freshUser);
+        localStorage.setItem('levelup_user', JSON.stringify(freshUser));
+      }
+
+      setLoaded(true);
+    } catch (err) {
+      console.error('Failed to sync user', err);
+      setLoaded(true);
     }
-    setLoaded(true);
-  }, []);
+  }
+
+  load();
+}, []);
+
+
+
+
 
   // Disable scroll behind the sheet when it's open
   useEffect(() => {
@@ -74,7 +99,7 @@ export default function Home() {
 
         {/* Center title */}
         <h1 className="text-3xl font-black flex items-center justify-center leading-none">
-          <span className="leading-none">level</span>
+          <span className="leading-none">lvl</span>
           <ArrowUpIcon />
         </h1>
 

@@ -1,4 +1,3 @@
-// app/components/auth/SignInCard.tsx
 'use client';
 
 import { useState } from 'react';
@@ -92,27 +91,35 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
 
   return (
     <div className="w-full max-w-xl mx-auto px-2">
-      <div className="bg-zinc-950 border border-white/10 rounded-2xl p-6 shadow-2xl">
+      <div
+        className="
+          bg-black border border-lime-400/30 rounded-2xl p-6 
+          shadow-[0_0_18px_-4px_rgba(192,255,0,0.25)]
+        "
+      >
         {/* Title */}
         <h2 className="text-2xl font-bold mb-3 text-center text-white">
           Sign In
         </h2>
-        <p className="text-xs text-white/50 text-center mb-4">
-          Enter your name, then your secret PIN.
+        <p className="text-xs text-white/60 text-center mb-4">
+          Enter your first name, then your secret PIN.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Player Name */}
           <div className="space-y-1">
             <label className="text-xs text-white/60">
-              {stage === 'username' ? 'Player Name' : 'Player Name (locked)'}
+              {stage === 'username' ? 'Player First Name' : 'Player Name (locked)'}
             </label>
             <input
               className="
-                w-full rounded-xl border border-white/10 
-                bg-zinc-900 px-3 py-2 text-white 
-                focus:outline-none focus:ring-2 focus:ring-lime-400 
-                disabled:opacity-60
+                w-full rounded-xl 
+                border border-white/10
+                bg-neutral-900 
+                px-3 py-2 text-white 
+                placeholder-white/30
+                focus:outline-none focus:border-lime-400
+                disabled:opacity-50
               "
               placeholder="e.g., Brooks"
               value={username}
@@ -127,9 +134,12 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
               <label className="text-xs text-white/60">PIN</label>
               <input
                 className="
-                  w-full rounded-xl border border-white/10 
-                  bg-zinc-900 px-3 py-2 text-white
-                  focus:outline-none focus:ring-2 focus:ring-lime-400
+                  w-full rounded-xl 
+                  border border-white/10
+                  bg-neutral-900 
+                  px-3 py-2 text-white
+                  placeholder-white/30
+                  focus:outline-none focus:border-lime-400
                 "
                 placeholder="4-digit PIN"
                 type="tel"
@@ -150,8 +160,9 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
                 disabled={loading}
                 className="
                   flex-1 rounded-xl border border-white/20
-                  bg-black text-white/80 py-2 text-sm
-                  hover:text-white hover:bg-white/10 transition
+                  bg-black text-white/70 py-2 text-sm
+                  hover:text-white hover:bg-white/10 
+                  transition
                   disabled:opacity-50
                 "
               >
@@ -165,7 +176,9 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
               className={`
                 ${stage === 'username' ? 'w-full' : 'flex-1'}
                 rounded-xl bg-lime-400 text-black font-semibold 
-                py-2 text-sm shadow-md active:scale-95 transition
+                py-2 text-sm shadow-md shadow-lime-400/20
+                active:scale-95 
+                transition
                 ${loading ? 'opacity-60' : 'hover:bg-lime-300'}
               `}
             >
@@ -179,7 +192,7 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
             </button>
           </div>
 
-          {/* Error message */}
+          {/* Error */}
           {status && (
             <p className="text-sm text-center text-red-400">{status}</p>
           )}

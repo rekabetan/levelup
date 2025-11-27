@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "level↑",
+  title: "lvl↑",
   description: "LevelUp – track your training streaks and progress",
 };
 
