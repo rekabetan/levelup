@@ -120,9 +120,9 @@ function ProfileContent({ user, logs, loadingLogs }: ProfileContentProps) {
   // ---------- Render ----------
   return (
     <main className="flex-1 w-full px-6 py-6 max-w-lg mx-auto space-y-10">
-      {/* Avatar / Name */}
-      <section className="flex flex-col items-center text-center relative">
-        <div className="relative mb-6">
+      {/* Avatar / Header */}
+      <section className="flex flex-col items-start text-left relative">
+        <div className="relative mb-4">
           <ProfileAvatar
             user={user}
             weeklyStreak={weeklyStreak}
@@ -131,10 +131,33 @@ function ProfileContent({ user, logs, loadingLogs }: ProfileContentProps) {
           />
         </div>
 
-        <div className="flex flex-col items-center space-y-1 mb-2">
-          <p className="text-4xl font-semibold">{user.username}</p>
-          {user.handle && (
-            <p className="text-lg text-white/60">@{user.handle}</p>
+        <div className="flex flex-col items-start space-y-1 mb-2">
+          {/* Player name */}
+          <p className="mt-4 text-4xl font-semibold">{user.username} <span className="text-xl text-white/60 font-medium">(@{user.handle})</span></p>
+
+          {/* Org + Team + Age Group */}
+          {(user.organization_name ||
+            user.team_name ||
+            user.team_age_group != null) && (
+            <div className="mt-2 space-y-0.5">
+              {user.organization_name && (
+                <p className="text-md font-semibold uppercase tracking-wide text-white/40">
+                  {user.organization_name}
+                </p>
+              )}
+
+              {(user.team_name || user.team_age_group != null) && (
+                <p className="text-md text-white/70">
+                  {user.team_name}
+                  {user.team_age_group != null && (
+                    <span className="text-white/50">
+                      {' '}
+                      | {user.team_age_group}U
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
           )}
         </div>
       </section>
@@ -194,11 +217,10 @@ function ProfileContent({ user, logs, loadingLogs }: ProfileContentProps) {
 
       {/* HISTORY / CALENDAR */}
       <section>
-        {/* Title + controls stacked (your layout) */}
         <div className="mb-3">
           <h2 className="text-3xl font-bold text-white">History</h2>
 
-          <div className="mt-2 flex items-center justify-end gap-2 text-sm font-semibold text-white/70">
+          <div className="mt-6 mb-4 flex items-center justify-start gap-2 text-sm font-semibold text-white/70">
             <button
               type="button"
               onClick={goToPreviousMonth}
@@ -207,7 +229,7 @@ function ProfileContent({ user, logs, loadingLogs }: ProfileContentProps) {
               ‹
             </button>
 
-            <span className="min-w-[140px] text-center text-white/80">
+            <span className="min-w-[140px] text-lg text-center text-white/60">
               {monthName}
             </span>
 
@@ -216,7 +238,7 @@ function ProfileContent({ user, logs, loadingLogs }: ProfileContentProps) {
               onClick={goToNextMonth}
               disabled={isAtCurrentMonth}
               className={`
-                w-7 h-7 flex.items-center justify-center rounded-full border border-white/20 transition
+                w-7 h-7 flex items-center justify-center rounded-full border border-white/20 transition
                 ${
                   isAtCurrentMonth
                     ? 'opacity-30 cursor-not-allowed'
@@ -245,7 +267,6 @@ function ProfileContent({ user, logs, loadingLogs }: ProfileContentProps) {
           </div>
         </div>
 
-        {/* Calendar card */}
         <div className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4">
           {loadingLogs ? (
             <p className="text-base text-white/60">
@@ -253,7 +274,7 @@ function ProfileContent({ user, logs, loadingLogs }: ProfileContentProps) {
             </p>
           ) : (
             <>
-              <div className="grid grid-cols-7 gap-2 mb-3 text-center text-sm font-medium text.white/60">
+              <div className="grid grid-cols-7 gap-2 mb-3 text-center text-sm font-medium text-white/60">
                 <span>Sun</span>
                 <span>Mon</span>
                 <span>Tue</span>
@@ -416,12 +437,12 @@ export default function ProfileClient() {
       : "You’re not signed in.";
 
     return (
-      <div className="min-h-screen bg-black text.white flex items-center justify-center">
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center space-y-4">
           <p className="text-lg">{message}</p>
           <Link
             href="/"
-            className="inline-flex items-center.rounded-full border border-white/20 px-4 py-2 text-sm font-medium hover:bg-white/10 transition"
+            className="inline-flex items-center rounded-full border border-white/20 px-4 py-2 text-sm font-medium hover:bg.white/10 transition"
           >
             ← Back to LevelUp
           </Link>
@@ -439,7 +460,7 @@ export default function ProfileClient() {
         {/* Back button */}
         <Link
           href="/"
-          className="text-sm text-white/70 hover:text-white flex.items-center gap-1"
+          className="text-sm text-white/70 hover:text-white flex items-center gap-1"
         >
           <span className="text-lg">←</span>
           <span>Back</span>
@@ -447,7 +468,7 @@ export default function ProfileClient() {
 
         <h1 className="text-lg font-semibold tracking-tight">Profile</h1>
 
-        {/* Show Sign Out whenever there *is* a.logged-in user */}
+        {/* Show Sign Out whenever there *is* a logged-in user */}
         {hasLoggedInUser ? (
           <button
             onClick={() => {

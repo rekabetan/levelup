@@ -1,3 +1,4 @@
+// app/components/auth/SignInCard.tsx
 'use client';
 
 import { useState } from 'react';
@@ -72,10 +73,14 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
           id: data.id,
           username: data.username,
           handle: data.handle ?? null,
-          // NEW FIELDS:
           role: data.role ?? 'player',
           avatar_url: data.avatar_url ?? null,
           weekly_goal: data.weekly_goal ?? null,
+
+          // 👇 these are what ProfileClient is reading
+          team_name: data.team_name ?? null,
+          organization_name: data.organization_name ?? null,
+          team_age_group: data.team_age_group ?? null,
         };
 
         window.localStorage.setItem('levelup_user', JSON.stringify(user));
@@ -131,7 +136,7 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
               "
               placeholder="e.g., Brooks"
               value={username}
-              onChange={e => setUsername(e.target.value)}
+              onChange={(e) => setUsername(e.target.value)}
               disabled={stage === 'pin'}
             />
           </div>
@@ -154,7 +159,7 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
                 inputMode="numeric"
                 pattern="[0-9]*"
                 value={pin}
-                onChange={e => setPin(e.target.value)}
+                onChange={(e) => setPin(e.target.value)}
               />
             </div>
           )}

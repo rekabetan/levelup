@@ -13,8 +13,15 @@ export async function POST(req: Request) {
       );
     }
 
-    const trimmedName = username.trim();
-    const trimmedPin = pin.trim();
+    const trimmedName = String(username).trim();
+    const trimmedPin = String(pin).trim();
+
+    if (!trimmedName || !trimmedPin) {
+      return NextResponse.json(
+        { error: 'Missing username or PIN' },
+        { status: 400 }
+      );
+    }
 
     const { data, error } = await supabaseAdmin
       .from('profiles')
@@ -36,8 +43,8 @@ export async function POST(req: Request) {
       username: data.username,
       handle: data.handle,
       role: data.role ?? 'player',
-      weekly_goal: data.weekly_goal,
-      avatar_url: data.avatar_url,
+      weekly_goal: data.weekly_goal ?? null,
+      avatar_url: data.avatar_url ?? null,
     });
   } catch (err) {
     console.error('login exception:', err);

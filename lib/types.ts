@@ -3,10 +3,15 @@ export type User = {
   id: string;
   username: string;
   handle?: string | null;
-  weekly_goal?: number | null; // in minutes
-  role?: 'player' | 'coach' | 'admin' | null;
-  avatar_url: string | null;
+  role?: string | null;
+  avatar_url?: string | null;
+weekly_goal?: number | null; // in minutes
+  // New flat fields:
+  team_name?: string | null;
+  organization_name?: string | null;
+  team_age_group?: number | null;
 };
+
 
 export type Entry = {
   username: string;

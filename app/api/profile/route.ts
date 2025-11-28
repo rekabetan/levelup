@@ -12,7 +12,7 @@ export async function GET(req: Request) {
 
   const { data, error } = await supabaseAdmin
     .from('profiles')
-    .select('id, username, handle, role, weekly_goal, avatar_url')
+    .select('id, username, handle, role, weekly_goal, avatar_url, org_id, team_id')
     .eq('id', userId)
     .single();
 
