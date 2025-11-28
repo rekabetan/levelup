@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { User, LogEntry } from '@/lib/types';
 import { computeWeeklyStreak } from '@/lib/streak';
+import ProfileAvatar from '@/app/components/profile/ProfileAvatar';
 
 export default function ProfilePage() {
   // ---------- Core state ----------
@@ -75,12 +76,12 @@ export default function ProfilePage() {
 
   // ---------- Streak / Initial ----------
   const weeklyStreak = computeWeeklyStreak(logs);
-  const isOnActiveStreak = weeklyStreak > 0;
+  // const isOnActiveStreak = weeklyStreak > 0;
 
-  const initial =
-    (user.username && user.username.trim()[0]?.toUpperCase()) ||
-    (user.handle && user.handle.replace('@', '')[0]?.toUpperCase()) ||
-    '?';
+  // const initial =
+  //   (user.username && user.username.trim()[0]?.toUpperCase()) ||
+  //   (user.handle && user.handle.replace('@', '')[0]?.toUpperCase()) ||
+  //   '?';
 
   // ---------- Monthly Calendar Data (based on viewYear/viewMonth) ----------
   const year = viewYear;
@@ -203,49 +204,16 @@ export default function ProfilePage() {
         {/* -------- Avatar / Name / Streak -------- */}
         <section className="flex flex-col items-center text-center relative">
           {/* Avatar + Badge */}
+        {/* -------- Avatar / Name / Streak -------- */}
+        <section className="flex flex-col items-center text-center relative">
+          {/* Avatar + Badge */}
           <div className="relative mb-6">
-            <div
-              className={`
-                flex h-24 w-24 items-center justify-center rounded-full
-                border border-white/10 bg-zinc-900 text-4xl font-semibold
-                ${
-                  isOnActiveStreak
-                    ? 'ring-2 ring-lime-400 ring-offset-2 ring-offset-black'
-                    : 'ring-2 ring-zinc-700 ring-offset-2 ring-offset-black'
-                }
-              `}
-            >
-              {initial}
-            </div>
-
-            {/* Parallelogram Badge */}
-            <div
-              className="
-                absolute -bottom-4 left-1/2 -translate-x-1/2
-                h-8 px-2
-                bg-lime-400 text-black
-                font-bold text-xs
-                flex items-center gap-1
-                shadow-lg
-                [transform:skew(-12deg)]
-                rounded-sm
-              "
-            >
-              <div className="[transform:skew(12deg)] flex items-center gap-1">
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 22"
-                  fill="currentColor"
-                  aria-hidden="true"
-                  className="text-black"
-                >
-                  <path d="M9 20V10H4L12 1L20 10H15V20H9Z" />
-                </svg>
-
-                <span className="text-lg">{weeklyStreak}</span>
-              </div>
-            </div>
+            <ProfileAvatar
+              user={user}
+              weeklyStreak={weeklyStreak}
+              size="lg"
+              showBadge={true}
+            />
           </div>
 
           {/* Name & handle */}
@@ -256,6 +224,8 @@ export default function ProfilePage() {
             )}
           </div>
         </section>
+        </section>
+
 
         {/* -------- HISTORY / CALENDAR -------- */}
         <section>

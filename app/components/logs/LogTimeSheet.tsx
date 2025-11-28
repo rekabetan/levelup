@@ -12,13 +12,14 @@ type LogTimeSheetProps = {
 };
 
 const CATEGORIES: Category[] = [
+  'Baserunning',
+  'Catching',
   'Hitting',
   'Infield',
   'Outfield',
   'Pitching',
-  'Baserunning',
   'Fitness',
-  'Mental',
+  'Mindset',
 ];
 
 const PRESET_MINUTES = [10, 15, 20, 30, 45, 60];

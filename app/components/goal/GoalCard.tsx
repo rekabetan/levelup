@@ -3,9 +3,10 @@
 
 import { useEffect, useState } from 'react';
 import type { LogEntry, User } from '@/lib/types';
+import { Pencil } from 'lucide-react';
 import SetWeeklyGoalSheet, {
   formatMinutesAsHoursLabel,
-} from '@/components/goal/SetWeeklyGoalSheet';
+} from '@/app/components/goal/SetWeeklyGoalSheet';
 
 type GoalCardProps = {
   user: User;
@@ -88,28 +89,29 @@ export default function GoalCard({ user }: GoalCardProps) {
             relative
           "
         >
-          {/* Title */}
-          <p className="mb-3 text-center text-xl font-bold uppercase tracking-wide">
-            Weekly Goal
-          </p>
-
-          {/* Edit button (top-right) */}
+          {/* Edit icon button (top-right) */}
           <button
             type="button"
             onClick={() => setShowGoalSheet(true)}
             className="
               absolute top-3 right-3
-              text-xs font-medium 
-              px-3 py-1.5 
-              rounded-lg 
-              border border-white/20 
-              text-white/80 
-              hover:text-white hover:bg-white/10 
+              w-8 h-8
+              flex items-center justify-center
+              rounded-full
+              border border-white/20
+              text-white/70
+              hover:text-white hover:border-white/40 hover:bg-white/10
               transition
             "
+            aria-label="Edit Weekly Goal"
           >
-            Edit
+            <Pencil className="w-3 h-3" strokeWidth={2} />
           </button>
+
+          {/* Title */}
+          <p className="mb-3 text-center text-xl font-bold uppercase tracking-wide">
+            Weekly Goal
+          </p>
 
           <div className="flex-1" />
 
@@ -160,22 +162,23 @@ export default function GoalCard({ user }: GoalCardProps) {
           p-4
         "
       >
-        {/* Edit button (top-right) */}
+        {/* Edit icon button (top-right) */}
         <button
           type="button"
           onClick={() => setShowGoalSheet(true)}
           className="
             absolute top-3 right-3
-            text-xs font-medium 
-            px-3 py-1.5 
-            rounded-lg 
-            border border-white/20 
-            text-white/80 
-            hover:text-white hover:bg-white/10 
+            w-6 h-6
+            flex items-center justify-center
+            rounded-full
+            border border-white/70
+            text-white/70
+            hover:text-white hover:border-white/40 hover:bg-white/10
             transition
           "
+          aria-label="Edit Weekly Goal"
         >
-          Edit
+          <Pencil className="w-3 h-3" strokeWidth={1} />
         </button>
 
         {/* Title */}

@@ -22,6 +22,7 @@ export default function StreakCard({ userId }: StreakCardProps) {
         const data = await res.json();
         setLogs(data.logs || []);
       } catch {
+        // ignore
       } finally {
         setLoading(false);
       }
@@ -31,16 +32,23 @@ export default function StreakCard({ userId }: StreakCardProps) {
 
   const weeklyStreak = computeWeeklyStreak(logs);
 
+  // Count unique days logged (any minutes)
+  const uniqueDates = new Set(
+    logs.map((l) => new Date(l.created_at).toDateString())
+  );
+  const daysLoggedCount = uniqueDates.size;
+
   return (
     <div
       className="
-        relative w-full min-w-[160px] min-h-[200px]
-        bg-white/5              /* dark translucent glass over black */
-        backdrop-blur-xl        /* now actually visible */
+        relative w-full min-w-[160px] min-h-[240px]
+        bg-white/5
+        backdrop-blur-xl
         border border-white/10
         rounded-2xl
         shadow-2xl shadow-black/70
-        flex flex-col items-center text-white
+        flex flex-col
+        text-white
         p-4
       "
     >
@@ -55,11 +63,11 @@ export default function StreakCard({ userId }: StreakCardProps) {
         onClick={() => setShowHelp((prev) => !prev)}
         aria-label="What is Weekly Streak?"
         className="
-          absolute top-4 right-4 h-5 w-5
+          absolute top-3 left-3 h-6 w-6
           flex items-center justify-center
           rounded-full
           border border-white/30
-          text-[11px] text-white/80
+          text-[11px] text-white/30
           hover:bg-white/15 hover:border-white/60
           transition
         "
@@ -71,7 +79,7 @@ export default function StreakCard({ userId }: StreakCardProps) {
       {showHelp && (
         <div
           className="
-            absolute top-10 right-4 w-60
+            absolute top-10 left-3 w-60
             bg-black/85 backdrop-blur-lg
             border border-white/15
             rounded-xl p-3
@@ -100,16 +108,27 @@ export default function StreakCard({ userId }: StreakCardProps) {
         </div>
       )}
 
-      {/* Spacer ABOVE number */}
-      <div className="flex-1" />
+      {/* Middle section (flexes) */}
+      <div className="flex-1 flex items-center justify-center">
+        <span className="text-8xl font-black text-lime-400 leading-none">
+          {loading ? '–' : weeklyStreak}
+        </span>
+      </div>
 
-      {/* Streak Number */}
-      <span className="text-8xl font-black text-lime-400 leading-none">
-        {loading ? '–' : weeklyStreak}
-      </span>
-
-      {/* Spacer BELOW number */}
-      <div className="flex-1" />
+      {/* Bottom section — pinned like GoalCard progress bar */}
+      <div className="w-full mt-4">
+        <div className="w-full flex gap-2">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className={`
+                h-3 flex-1 rounded-md transition-all
+                ${daysLoggedCount >= i ? 'bg-lime-400' : 'bg-white/20'}
+              `}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

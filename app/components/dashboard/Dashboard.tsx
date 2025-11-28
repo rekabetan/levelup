@@ -2,10 +2,10 @@
 'use client';
 
 import type { User } from '@/lib/types';
-import ChooseHandleCard from '@/components/auth/ChooseHandleCard';
-import GoalCard from '@/components/goal/GoalCard';
-import StreakCard from '@/components/dashboard/StreakCard';
-import LeaderboardCard from '@/components/dashboard/LeaderboardCard';
+import ChooseHandleCard from '@/app/components/auth/ChooseHandleCard';
+import GoalCard from '@/app/components/goal/GoalCard';
+import StreakCard from '@/app/components/dashboard/StreakCard';
+import LeaderboardCard from '@/app/components/dashboard/LeaderboardCard';
 
 type DashboardProps = {
   user: User;

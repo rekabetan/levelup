@@ -2,13 +2,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import StreakAvatar from '@/components/streak/StreakAvatar';
-import SignInCard from '@/components/auth/SignInCard';
-import Dashboard from '@/components/dashboard/Dashboard';
+import Link from 'next/link';
+import ProfileAvatar from './components/profile/ProfileAvatar';
+import SignInCard from '@/app/components/auth/SignInCard';
+import Dashboard from '@/app/components/dashboard/Dashboard';
+import { useWeeklyStreak } from './hooks/useWeeklyStreak';
 import type { User } from '@/lib/types';
 
-import FloatingActionButton from '@/components/ui/FloatingActionButton';
-import LogTimeSheet from '@/components/logs/LogTimeSheet';
+import FloatingActionButton from '@/app/components/ui/FloatingActionButton';
+import LogTimeSheet from '@/app/components/logs/LogTimeSheet';
 
 function ArrowUpIcon() {
   return (
@@ -29,44 +31,41 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [isLogSheetOpen, setIsLogSheetOpen] = useState(false);
+  const { weeklyStreak } = useWeeklyStreak(user?.id ?? null);
 
-useEffect(() => {
-  async function load() {
-    try {
-      const stored = localStorage.getItem('levelup_user');
-      if (!stored) {
+  useEffect(() => {
+    async function load() {
+      try {
+        const stored = localStorage.getItem('levelup_user');
+        if (!stored) {
+          setLoaded(true);
+          return;
+        }
+
+        const parsed = JSON.parse(stored) as User;
+
+        // Show cached user immediately
+        setUser(parsed);
+
+        // Re-sync from backend so weekly_goal stays in sync across devices
+        const res = await fetch(`/api/profile?userId=${parsed.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          const freshUser = data.user as User;
+
+          setUser(freshUser);
+          localStorage.setItem('levelup_user', JSON.stringify(freshUser));
+        }
+
         setLoaded(true);
-        return;
+      } catch (err) {
+        console.error('Failed to sync user', err);
+        setLoaded(true);
       }
-
-      const parsed = JSON.parse(stored) as User;
-
-      // Optional: show cached user immediately
-      setUser(parsed);
-
-      // 🔥 Re-sync from backend so weekly_goal stays in sync across devices
-      const res = await fetch(`/api/profile?userId=${parsed.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        const freshUser = data.user as User;
-
-        setUser(freshUser);
-        localStorage.setItem('levelup_user', JSON.stringify(freshUser));
-      }
-
-      setLoaded(true);
-    } catch (err) {
-      console.error('Failed to sync user', err);
-      setLoaded(true);
     }
-  }
 
-  load();
-}, []);
-
-
-
-
+    load();
+  }, []);
 
   // Disable scroll behind the sheet when it's open
   useEffect(() => {
@@ -95,7 +94,7 @@ useEffect(() => {
       {/* 🔥 TOP HEADER */}
       <header className="sticky top-0 z-20 w-full py-4 bg-black/80 backdrop-blur border-b border-white/10 shadow-md flex items-center justify-between px-4">
         {/* Left spacer to balance layout */}
-        <div className="w-8" />
+        <div className="w-24" />
 
         {/* Center title */}
         <h1 className="text-3xl font-black flex items-center justify-center leading-none">
@@ -103,12 +102,36 @@ useEffect(() => {
           <ArrowUpIcon />
         </h1>
 
-        {/* Right: profile button if logged in */}
-        {user ? (
-          <StreakAvatar userId={user.id} />
-        ) : (
-          <div className="w-8" /> // keep symmetry when logged out
-        )}
+        {/* Right: Admin link (if admin) + profile avatar (if logged in) */}
+        <div className="w-24 flex items-center justify-end gap-3">
+          {user?.role === 'admin' && (
+            <Link
+              href="/admin"
+              className="
+              text-xs font-medium 
+              px-3 py-1.5 
+              rounded-lg 
+              border border-white/20 
+              text-white/80 
+              hover:text-white hover:bg-white/10 
+              transition"
+            >
+              Admin
+            </Link>
+          )}
+
+{user && (
+  <Link href="/profile" className="block">
+    <ProfileAvatar
+      user={user}
+      weeklyStreak={weeklyStreak}
+      size="sm"
+      showBadge={false}
+    />
+  </Link>
+)}
+
+        </div>
       </header>
 
       {/* MAIN CONTENT AREA */}

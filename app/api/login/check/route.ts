@@ -3,45 +3,46 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function POST(req: Request) {
-  const { username } = await req.json();
+  try {
+    const { username } = await req.json();
 
-  if (
-    !username ||
-    typeof username !== 'string' ||
-    username.trim().length < 2
-  ) {
+    if (!username || !username.trim()) {
+      return NextResponse.json(
+        { error: 'Missing username' },
+        { status: 400 }
+      );
+    }
+
+    const trimmed = username.trim();
+
+    const { data, error } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('username', trimmed)
+      .maybeSingle();
+
+    if (error) {
+      console.error('login/check error:', error);
+      return NextResponse.json(
+        { error: 'Server error' },
+        { status: 500 }
+      );
+    }
+
+    if (!data) {
+      return NextResponse.json(
+        { error: 'Could not find that player.' },
+        { status: 404 }
+      );
+    }
+
+    // Username exists → ok to move to PIN step
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('login/check exception:', err);
     return NextResponse.json(
-      { error: 'Please enter a valid name.' },
-      { status: 400 }
-    );
-  }
-
-  const cleanName = username.trim();
-
-  const { data, error } = await supabaseAdmin
-    .from('profiles')
-    .select('id, username, is_verified')
-    .eq('username', cleanName)
-    .maybeSingle();
-
-  if (error) {
-    console.error(error);
-    return NextResponse.json(
-      { error: 'Problem checking name. Try again.' },
+      { error: 'Server error' },
       { status: 500 }
     );
   }
-
-  if (!data || !data.is_verified) {
-    return NextResponse.json(
-      { error: 'That player is not found or not activated yet.' },
-      { status: 404 }
-    );
-  }
-
-  // We don't log them in yet, just confirm the player exists
-  return NextResponse.json({
-    id: data.id,
-    username: data.username,
-  });
 }

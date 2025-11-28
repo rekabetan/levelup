@@ -1,4 +1,4 @@
-// app/lib/streak.ts
+// /lib/streak.ts
 
 export type LogEntry = {
   id: string;

@@ -4,8 +4,10 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 export async function GET() {
   const { data, error } = await supabaseAdmin
     .from('profiles')
-    .select('id, username')
-    .order('username', { ascending: true });
+    .select('id, username, role')
+    .eq('role', 'player')
+    .order('username');
+
 
   if (error) {
     console.error('[users] error:', error);

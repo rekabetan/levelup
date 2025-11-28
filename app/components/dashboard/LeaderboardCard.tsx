@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import type { Period } from '@/lib/types';
-import { formatMinutesAsHoursLabel } from '@/components/goal/SetWeeklyGoalSheet';
+import { formatMinutesAsHoursLabel } from '@/app/components/goal/SetWeeklyGoalSheet';
 
 type LeaderboardCardProps = {
   currentUser: string;
@@ -12,6 +12,7 @@ type LeaderboardCardProps = {
 type User = {
   id: string;
   username: string;
+  role?: string | null; // optional – may or may not be present
 };
 
 type LeaderboardEntry = {
@@ -52,7 +53,7 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
             leaderboardRes.status,
             text
           );
-          setEntries([]);
+          setEntries(([]) as LeaderboardEntry[]);
         } else {
           const leaderboardData = await leaderboardRes.json();
           setEntries((leaderboardData.entries || []) as LeaderboardEntry[]);
@@ -75,8 +76,15 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
     { key: 'all', label: 'All Time' },
   ];
 
-  // Merge: every user gets a row; minutes from entries if present, else 0
-  const rows = users
+  // --- NEW PART: prefer players, fall back to all users if no roles/players ---
+  const hasRoleInfo = users.some((u) => typeof u.role === 'string');
+  const hasPlayers = users.some((u) => u.role === 'player');
+
+  const effectiveUsers: User[] =
+    hasRoleInfo && hasPlayers ? users.filter((u) => u.role === 'player') : users;
+
+  // Merge: every effective user gets a row; minutes from entries if present, else 0
+  const rows = effectiveUsers
     .map((u) => {
       const match = entries.find((e) => e.username === u.username);
       return {
@@ -131,7 +139,7 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
         <p className="text-sm text-center text-white/70">Loading…</p>
       ) : rows.length === 0 ? (
         <p className="text-sm text-center text-white/60">
-          No users to display.
+          No players to display.
         </p>
       ) : (
         <ul className="space-y-2">

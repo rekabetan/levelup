@@ -19,6 +19,7 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
     e.preventDefault();
     setStatus(null);
 
+    // STEP 1: check username
     if (stage === 'username') {
       if (!username.trim()) {
         setStatus('Please enter your name.');
@@ -49,6 +50,7 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
       return;
     }
 
+    // STEP 2: check PIN + log in
     if (!pin.trim()) {
       setStatus('Please enter your PIN.');
       return;
@@ -70,6 +72,10 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
           id: data.id,
           username: data.username,
           handle: data.handle ?? null,
+          // NEW FIELDS:
+          role: data.role ?? 'player',
+          avatar_url: data.avatar_url ?? null,
+          weekly_goal: data.weekly_goal ?? null,
         };
 
         window.localStorage.setItem('levelup_user', JSON.stringify(user));
@@ -109,7 +115,9 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
           {/* Player Name */}
           <div className="space-y-1">
             <label className="text-xs text-white/60">
-              {stage === 'username' ? 'Player First Name' : 'Player Name (locked)'}
+              {stage === 'username'
+                ? 'Player First Name'
+                : 'Player Name (locked)'}
             </label>
             <input
               className="

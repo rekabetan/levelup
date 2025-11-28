@@ -4,6 +4,8 @@ export type User = {
   username: string;
   handle?: string | null;
   weekly_goal?: number | null; // in minutes
+  role?: 'player' | 'coach' | 'admin' | null;
+  avatar_url: string | null;
 };
 
 export type Entry = {
@@ -14,13 +16,14 @@ export type Entry = {
 export type Period = 'week' | 'month' | 'all';
 
 export type Category =
+  | 'Baserunning'
+  | 'Catching'
   | 'Hitting'
   | 'Infield'
   | 'Outfield'
   | 'Pitching'
-  | 'Baserunning'
   | 'Fitness'
-  | 'Mental';
+  | 'Mindset';
 
 export type LogEntry = {
   id: string;
