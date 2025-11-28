@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import type { Period } from '@/lib/types';
 import { formatMinutesAsHoursLabel } from '@/app/components/goal/SetWeeklyGoalSheet';
 
@@ -76,7 +77,7 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
     { key: 'all', label: 'All Time' },
   ];
 
-  // --- NEW PART: prefer players, fall back to all users if no roles/players ---
+  // Prefer players, fall back to all users if roles/players not present
   const hasRoleInfo = users.some((u) => typeof u.role === 'string');
   const hasPlayers = users.some((u) => u.role === 'player');
 
@@ -155,44 +156,44 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
                 : '';
 
             return (
-              <li
-                key={e.id}
-                className="flex items-center gap-2"
-              >
+              <li key={e.id} className="flex items-center gap-2">
                 {/* Medal / Rank OUTSIDE the box */}
                 <span className="w-6 text-center text-xl">
                   {medal || idx + 1}
                 </span>
 
-                {/* Inner pill/box with user + minutes */}
-                <div
-                  className={`
-                    flex justify-between items-center flex-1
-                    rounded-xl px-3 py-2
-                    ${
-                      isMe
-                        ? 'bg-white/5 backdrop-blur-xl border border-white/10 shadow-md text-white font-semibold'
-                        : 'border border-white/15 text-white'
-                    }
-                  `}
-                >
-                  {/* Name + "me" star */}
-                  <div className="flex items-center gap-1">
-                    {isMe && (
-                      <span className="text-lime-400 text-sm leading-none">
-                        ★
+                {/* Clickable pill/box linking to that player's profile */}
+<Link href={`/profile?id=${e.id}`} className="flex-1">
+  <div
+    className={`
+      flex justify-between items-center flex-1
+      rounded-xl px-3 py-2
+      transition cursor-pointer
+      ${
+        isMe
+          ? 'bg-white/5 backdrop-blur-xl border border-white/10 shadow-md text-white font-semibold'
+          : 'border border-white/15 text-white hover:bg-white/5'
+      }
+    `}
+  >
+                    {/* Name + "me" star */}
+                    <div className="flex items-center gap-1">
+                      {isMe && (
+                        <span className="text-lime-400 text-sm leading-none">
+                          ★
+                        </span>
+                      )}
+                      <span className={isMe ? 'font-semibold' : ''}>
+                        {e.username}
                       </span>
-                    )}
-                    <span className={isMe ? 'font-semibold' : ''}>
-                      {e.username}
+                    </div>
+
+                    {/* Minutes formatted as hours + minutes */}
+                    <span className="text-sm font-semibold">
+                      {formatMinutesAsHoursLabel(e.total_minutes)}
                     </span>
                   </div>
-
-                  {/* Minutes formatted as hours + minutes */}
-                  <span className="text-sm font-semibold">
-                    {formatMinutesAsHoursLabel(e.total_minutes)}
-                  </span>
-                </div>
+                </Link>
               </li>
             );
           })}
