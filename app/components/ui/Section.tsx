@@ -17,7 +17,7 @@ export default function Section({
   className = "",
 }: SectionProps) {
   return (
-    <section className={className}>
+    <section className={`mb-8 ${className}`}>
       {/* Header row */}
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-3xl font-bold text-white">{title}</h2>

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import type { Period } from '@/lib/types';
 import { formatMinutesAsHoursLabel } from '@/app/components/goal/SetWeeklyGoalSheet';
 import Card from '@/components/ui/Card';
-import Row from '@/components/ui/Row';
+import { List, ListItem } from '@/components/ui/List';
 
 type LeaderboardCardProps = {
   currentUser: string;
@@ -132,7 +132,7 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
           No players to display.
         </p>
       ) : (
-        <ul className="space-y-2">
+        <List>
           {rows.map((e, idx) => {
             const isMe = e.username === currentUser;
             const medal =
@@ -145,7 +145,7 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
                 : '';
 
             return (
-              <li key={e.id} className="flex items-center gap-2">
+              <ListItem key={e.id} className="items-center gap-2">
                 {/* Medal / Rank OUTSIDE the box */}
                 <span className="w-6 text-center text-xl">
                   {medal || idx + 1}
@@ -153,10 +153,7 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
 
                 {/* Clickable pill/box linking to that player's profile */}
                 <Link href={`/profile?id=${e.id}`} className="flex-1">
-                  <Row
-                    highlighted={isMe}
-                    className="flex justify-between items-center flex-1 cursor-pointer"
-                  >
+                  <div className="flex justify-between items-center flex-1 cursor-pointer px-3">
                     {/* Name + "me" star */}
                     <div className="flex items-center gap-1">
                       {isMe && (
@@ -173,12 +170,12 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
                     <span className="text-sm font-semibold">
                       {formatMinutesAsHoursLabel(e.total_minutes)}
                     </span>
-                  </Row>
+                  </div>
                 </Link>
-              </li>
+              </ListItem>
             );
           })}
-        </ul>
+        </List>
       )}
     </Card>
   );

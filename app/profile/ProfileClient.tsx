@@ -7,6 +7,19 @@ import { useSearchParams } from 'next/navigation';
 import type { User, LogEntry } from '@/lib/types';
 import { computeWeeklyStreak, getWeekStart } from '@/lib/streak';
 import ProfileAvatar from '@/app/components/profile/ProfileAvatar';
+import TeamsSection from '@/app/components/coach/TeamsSection';
+import FeedbackSection from '@/app/components/coach/FeedbackSection';
+import { Mail } from 'lucide-react';
+import Section from '@/components/ui/Section';
+
+type CoachTeam = {
+  id: string;
+  name: string;
+  age_group?: string | null;
+  season_label?: string | null;
+  player_count?: number | null;
+  org_name?: string | null;
+};
 
 type ProfileContentProps = {
   user: User;
@@ -14,11 +27,138 @@ type ProfileContentProps = {
   loadingLogs: boolean;
 };
 
-function ProfileContent({ user, logs, loadingLogs }: ProfileContentProps) {
+type CoachProfileProps = {
+  user: User;
+  logs: LogEntry[];
+};
+
+type FeedbackItem = {
+  id: string;
+  body: string;
+  created_at: string;
+  is_read: boolean;
+  coach_id: string;
+  coach?: { username?: string | null } | null;
+};
+
+function formatAgeLabel(age?: string | number | null) {
+  if (age === null || age === undefined) return null;
+  const str = String(age);
+  return str.toUpperCase().endsWith('U') ? str : `${str}U`;
+}
+
+function ProfileHeader({
+  user,
+  weeklyStreak,
+  orgNameOverride,
+  teamNameOverride,
+  teamAgeOverride,
+  showMessageButton = false,
+  unreadCount = 0,
+  onMessageClick,
+}: {
+  user: User;
+  weeklyStreak: number;
+  orgNameOverride?: string | null;
+  teamNameOverride?: string | null;
+  teamAgeOverride?: string | number | null;
+  showMessageButton?: boolean;
+  unreadCount?: number;
+  onMessageClick?: () => void;
+}) {
   const now = new Date();
 
-  // ---------- Streak / Recent ----------
+  return (
+    <section className="flex flex-col items-start text-left relative">
+      <div className="relative mb-4 flex items-end gap-4">
+        <ProfileAvatar
+          user={user}
+          weeklyStreak={weeklyStreak}
+          size="lg"
+          showBadge={true}
+        />
+
+        {showMessageButton && (
+          <button
+            type="button"
+            onClick={onMessageClick}
+            className="
+              h-10 w-10 flex items-center justify-center
+              rounded-full border border-white/30
+              text-white/70
+              hover:text-white hover:border-white/60 hover:bg-white/10
+              transition
+              active:scale-95
+              relative
+            "
+            aria-label="Messages"
+          >
+            <Mail className="h-4 w-4" />
+            {unreadCount > 0 && (
+              <span
+                className="
+                  absolute -top-1 -right-1
+                  h-3 w-3 rounded-full
+                  bg-lime-400
+                  ring-2 ring-black
+                "
+              />
+            )}
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-col items-start space-y-1 mb-2">
+        <p className="mt-4 text-4xl font-semibold">
+          {user.username}{' '}
+          <span className="text-xl text-white/60 font-medium">
+            (@{user.handle})
+          </span>
+        </p>
+
+        {(orgNameOverride ||
+          teamNameOverride ||
+          teamAgeOverride != null ||
+          user.organization_name ||
+          user.team_name ||
+          user.team_age_group != null) && (
+          <div className="mt-2 space-y-0.5">
+            {(orgNameOverride ?? user.organization_name) && (
+              <p className="text-md font-semibold uppercase tracking-wide text-white/40">
+                {orgNameOverride ?? user.organization_name}
+              </p>
+            )}
+
+            {(teamNameOverride || teamAgeOverride != null || user.team_name || user.team_age_group != null) && (
+              <p className="text-md text-white/70">
+                {teamNameOverride ?? user.team_name}
+                {(teamAgeOverride != null || user.team_age_group != null) && (
+                  <span className="text-white/70">
+                    {' '}
+                    | {formatAgeLabel(teamAgeOverride ?? user.team_age_group)}
+                  </span>
+                )}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+type PlayerProfileProps = ProfileContentProps & { isSelf: boolean };
+
+function PlayerProfile({ user, logs, loadingLogs, isSelf }: PlayerProfileProps) {
+  const now = new Date();
   const weeklyStreak = computeWeeklyStreak(logs);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackDetailOpen, setFeedbackDetailOpen] = useState(false);
+  const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [selectedFeedbackId, setSelectedFeedbackId] = useState<string | null>(null);
 
   const weekStartMs = getWeekStart(now);
   const recentLogs = logs
@@ -37,7 +177,6 @@ function ProfileContent({ user, logs, loadingLogs }: ProfileContentProps) {
       minute: '2-digit',
     });
 
-  // ---------- Monthly calendar data ----------
   const [viewYear, setViewYear] = useState(() => now.getFullYear());
   const [viewMonth, setViewMonth] = useState(() => now.getMonth()); // 0 = Jan
 
@@ -117,50 +256,127 @@ function ProfileContent({ user, logs, loadingLogs }: ProfileContentProps) {
   const isAtCurrentMonth =
     viewYear === now.getFullYear() && viewMonth === now.getMonth();
 
-  // ---------- Render ----------
+  // Load unread feedback for the signed-in player
+  useEffect(() => {
+    async function loadUnread() {
+      if (!isSelf || user.role !== 'player') {
+        setUnreadCount(0);
+        return;
+      }
+      try {
+        const res = await fetch(`/api/feedback/unread?playerId=${user.id}`);
+        if (!res.ok) {
+          setUnreadCount(0);
+          return;
+        }
+        const data = await res.json();
+        setUnreadCount(data.count ?? 0);
+      } catch {
+        setUnreadCount(0);
+      }
+    }
+    loadUnread();
+  }, [isSelf, user.id, user.role]);
+
+  const loadFeedbackList = async () => {
+    if (!isSelf || user.role !== 'player') return;
+    setFeedbackLoading(true);
+    setFeedbackError(null);
+    try {
+      const res = await fetch(`/api/feedback/list?playerId=${user.id}`);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'Failed to load feedback');
+      }
+      const data = await res.json();
+      setFeedbackItems((data.feedback || []) as FeedbackItem[]);
+    } catch (err: any) {
+      setFeedbackError(err?.message || 'Could not load feedback');
+      setFeedbackItems([]);
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
+  // Load feedback list on open + initial mount for section
+  useEffect(() => {
+    if (feedbackOpen) {
+      loadFeedbackList();
+    }
+  }, [feedbackOpen]);
+
+  useEffect(() => {
+    loadFeedbackList();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSelf, user.id, user.role]);
+
+  // Lock background scroll when feedback sheet open
+  useEffect(() => {
+    if (!feedbackOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [feedbackOpen]);
+
+  const selectedFeedback =
+    feedbackItems.find((f) => f.id === selectedFeedbackId) ??
+    null;
+  const hasUnread = feedbackItems.some((f) => !f.is_read);
+
+  useEffect(() => {
+    if (feedbackOpen) {
+      setSelectedFeedbackId(null);
+      setFeedbackDetailOpen(false);
+    }
+  }, [feedbackOpen]);
+
+  useEffect(() => {
+    if (!selectedFeedbackId) return;
+    const stillExists = feedbackItems.some((f) => f.id === selectedFeedbackId);
+    if (!stillExists) {
+      setSelectedFeedbackId(null);
+    }
+  }, [feedbackItems, selectedFeedbackId]);
+
+  const handleMarkRead = async () => {
+    if (!selectedFeedback) return;
+    try {
+      const res = await fetch('/api/feedback/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedbackId: selectedFeedback.id }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'Could not mark as read');
+      }
+
+      setFeedbackItems((prev) =>
+        prev.map((f) =>
+          f.id === selectedFeedback.id ? { ...f, is_read: true } : f
+        )
+      );
+      setUnreadCount((c) =>
+        Math.max(0, c - (selectedFeedback.is_read ? 0 : 1))
+      );
+      // refresh list to reflect read state for other views
+      loadFeedbackList();
+    } catch (err: any) {
+      setFeedbackError(err?.message || 'Could not mark as read');
+    }
+  };
+
   return (
     <main className="flex-1 w-full px-6 py-6 max-w-lg mx-auto space-y-10">
-      {/* Avatar / Header */}
-      <section className="flex flex-col items-start text-left relative">
-        <div className="relative mb-4">
-          <ProfileAvatar
-            user={user}
-            weeklyStreak={weeklyStreak}
-            size="lg"
-            showBadge={true}
-          />
-        </div>
-
-        <div className="flex flex-col items-start space-y-1 mb-2">
-          {/* Player name */}
-          <p className="mt-4 text-4xl font-semibold">{user.username} <span className="text-xl text-white/60 font-medium">(@{user.handle})</span></p>
-
-          {/* Org + Team + Age Group */}
-          {(user.organization_name ||
-            user.team_name ||
-            user.team_age_group != null) && (
-            <div className="mt-2 space-y-0.5">
-              {user.organization_name && (
-                <p className="text-md font-semibold uppercase tracking-wide text-white/40">
-                  {user.organization_name}
-                </p>
-              )}
-
-              {(user.team_name || user.team_age_group != null) && (
-                <p className="text-md text-white/70">
-                  {user.team_name}
-                  {user.team_age_group != null && (
-                    <span className="text-white/50">
-                      {' '}
-                      | {user.team_age_group}U
-                    </span>
-                  )}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      </section>
+      <ProfileHeader
+        user={user}
+        weeklyStreak={weeklyStreak}
+        showMessageButton={isSelf}
+        unreadCount={unreadCount}
+        onMessageClick={() => setFeedbackOpen(true)}
+      />
 
       {/* RECENT */}
       <section>
@@ -316,6 +532,283 @@ function ProfileContent({ user, logs, loadingLogs }: ProfileContentProps) {
           )}
         </div>
       </section>
+
+      {/* FEEDBACK SECTION */}
+      <FeedbackSection
+        feedbackItems={feedbackItems}
+        loading={feedbackLoading}
+        error={feedbackError}
+        onShowMore={() => setFeedbackOpen(true)}
+        onSelect={(id) => {
+          setSelectedFeedbackId(id);
+          setFeedbackDetailOpen(true);
+        }}
+      />
+
+      {feedbackOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setFeedbackOpen(false)}
+          />
+
+          <div
+            className="
+              relative z-50 w-full max-w-md h-full
+              rounded-none flex flex-col overflow-hidden
+              bg-white/5 backdrop-blur-xl
+              border border-white/10
+              shadow-[0_-20px_60px_rgba(0,0,0,0.9)]
+              px-6 pt-5 pb-7
+            "
+          >
+            <h2 className="text-center text-xl font-bold uppercase tracking-wide text-white">
+              Messages
+            </h2>
+            <p className="mt-1 text-center text-white/50 text-xs mb-4">
+              Tap a message to read the full feedback.
+            </p>
+
+            <div
+              className="flex-1 flex flex-col gap-4 overflow-y-auto"
+              style={{
+                paddingBottom: 'calc(env(safe-area-inset-bottom, 16px) + 48px)',
+              }}
+            >
+              {/* Feedback list */}
+              <div className="space-y-2">
+                {feedbackItems.length === 0 ? (
+                  <p className="text-white/60 text-sm text-center">
+                    No feedback yet.
+                  </p>
+                ) : (
+                  feedbackItems.map((item) => {
+                    const isActive = item.id === selectedFeedbackId;
+                    const dateLabel = new Date(item.created_at).toLocaleDateString(
+                      undefined,
+                      { month: 'short', day: 'numeric', year: 'numeric' }
+                    );
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedFeedbackId(item.id);
+                          setFeedbackDetailOpen(true);
+                        }}
+                        className={`
+                          w-full flex items-center gap-3 text-left rounded-xl px-3 py-2
+                          border border-white/10
+                          ${isActive ? 'bg-white/10' : 'bg-black/20 hover:bg-white/5'}
+                        `}
+                      >
+                        {!item.is_read && (
+                          <span
+                            className={`
+                              h-2.5 w-2.5 rounded-full flex-shrink-0
+                              bg-lime-400
+                            `}
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className={`
+                              text-sm flex-1 ${item.is_read ? 'text-white/70' : 'text-white font-semibold'}
+                            `}
+                          >
+                            Feedback from {item.coach?.username || 'Coach'}
+                          </p>
+                        </div>
+                        <span className="text-xs text-white/50 flex-shrink-0">
+                          {dateLabel}
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            <div
+              className="mt-auto flex flex-col gap-3 sticky bottom-0 pt-2"
+              style={{
+                paddingBottom: 'calc(env(safe-area-inset-bottom, 12px) + 8px)',
+                background: 'transparent',
+              }}
+            >
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFeedbackOpen(false)}
+                  className="
+                    flex-1 rounded-full border border-white/20
+                    bg-transparent px-4 py-2 text-sm font-medium
+                    text-white hover:bg-white/10 transition
+                  "
+                >
+                  Close
+                </button>
+
+                {hasUnread && selectedFeedback && !selectedFeedback.is_read && (
+                  <button
+                    type="button"
+                    onClick={handleMarkRead}
+                    className="
+                      flex-1 rounded-full px-4 py-2
+                      bg-white text-black font-semibold
+                      border border-white/20
+                      hover:bg-white/90 transition
+                    "
+                  >
+                    Mark as Read
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {feedbackDetailOpen && selectedFeedback && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setFeedbackDetailOpen(false)}
+          />
+
+          <div
+            className="
+              relative z-50 w-full max-w-md h-full
+              rounded-none flex flex-col overflow-hidden
+              bg-white/5 backdrop-blur-xl
+              border border-white/10
+              shadow-[0_-20px_60px_rgba(0,0,0,0.9)]
+              px-6 pt-5 pb-7
+            "
+          >
+            <h2 className="text-center text-xl font-bold uppercase tracking-wide text-white">
+              Feedback from {selectedFeedback.coach?.username || 'Coach'}
+            </h2>
+            <p className="mt-1 text-center text-white/50 text-xs mb-4">
+              {new Date(selectedFeedback.created_at).toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            </p>
+
+            <div
+              className="flex-1 flex flex-col gap-4 overflow-y-auto"
+              style={{
+                paddingBottom: 'calc(env(safe-area-inset-bottom, 16px) + 48px)',
+              }}
+            >
+              <div className="flex-1">
+                <div className="rounded-2xl border border-white/15 bg-black/40 p-4 text-white/80 whitespace-pre-line">
+                  {selectedFeedback.body}
+                </div>
+              </div>
+
+              <div className="mt-auto flex flex-col gap-3 sticky bottom-0 pt-2">
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFeedbackDetailOpen(false)}
+                    className="
+                      flex-1 rounded-full border border-white/20
+                      bg-transparent px-4 py-2 text-sm font-medium
+                      text-white hover:bg-white/10 transition
+                    "
+                  >
+                    Close
+                  </button>
+
+                  {!selectedFeedback.is_read && (
+                    <button
+                      type="button"
+                      onClick={handleMarkRead}
+                      className="
+                        flex-1 rounded-full px-4 py-2
+                        bg-white text-black font-semibold
+                        border border-white/20
+                        hover:bg-white/90 transition
+                      "
+                    >
+                      Mark as Read
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
+
+function CoachProfile({ user, logs }: CoachProfileProps) {
+  const weeklyStreak = computeWeeklyStreak(logs);
+  const [teams, setTeams] = useState<CoachTeam[]>([]);
+  const [loadingTeams, setLoadingTeams] = useState(false);
+  const [profileOrgName, setProfileOrgName] = useState<string | null>(null);
+  const [profileTeamName, setProfileTeamName] = useState<string | null>(null);
+  const [profileTeamAge, setProfileTeamAge] = useState<string | number | null>(null);
+
+  useEffect(() => {
+    async function loadTeams() {
+      if (!user?.id) return;
+      setLoadingTeams(true);
+      try {
+        const res = await fetch(`/api/coach/teams?coachId=${user.id}`);
+        if (!res.ok) {
+          console.error('Failed to fetch teams for coach profile', await res.text());
+          setTeams([]);
+          return;
+        }
+        const data = await res.json();
+        const loadedTeams = (data.teams || []) as CoachTeam[];
+        setTeams(loadedTeams);
+
+        const primaryTeam = loadedTeams[0];
+        if (primaryTeam) {
+          setProfileTeamName(primaryTeam.name ?? null);
+          setProfileTeamAge(primaryTeam.age_group ?? null);
+          setProfileOrgName(primaryTeam.org_name ?? null);
+        }
+      } catch (err) {
+        console.error('Error loading teams for coach profile', err);
+        setTeams([]);
+        setProfileOrgName(null);
+        setProfileTeamName(null);
+        setProfileTeamAge(null);
+      } finally {
+        setLoadingTeams(false);
+      }
+    }
+
+    loadTeams();
+  }, [user?.id]);
+
+  const title = teams.length === 1 ? 'Team' : 'Teams';
+
+  return (
+    <main className="flex-1 w-full px-6 py-6 max-w-lg mx-auto space-y-10">
+      <ProfileHeader
+        user={user}
+        weeklyStreak={weeklyStreak}
+        orgNameOverride={profileOrgName}
+        teamNameOverride={profileTeamName}
+        teamAgeOverride={profileTeamAge}
+      />
+
+      <TeamsSection teams={teams} title={title} />
+
+      {loadingTeams && (
+        <p className="text-sm text-white/60">Loading teams…</p>
+      )}
     </main>
   );
 }
@@ -452,6 +945,12 @@ export default function ProfileClient() {
   }
 
   const hasLoggedInUser = !!selfUser;
+  const viewRole = viewUser.role?.toLowerCase() || null;
+  const selfRole = selfUser?.role?.toLowerCase() || null;
+  const isCoachView =
+    viewRole === 'coach' ||
+    viewRole === 'admin' ||
+    (!viewRole && (selfRole === 'coach' || selfRole === 'admin'));
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
@@ -492,11 +991,16 @@ export default function ProfileClient() {
         )}
       </header>
 
-      <ProfileContent
-        user={viewUser}
-        logs={logs}
-        loadingLogs={loadingLogs}
-      />
+      {isCoachView ? (
+        <CoachProfile user={viewUser} logs={logs} />
+      ) : (
+        <PlayerProfile
+          user={viewUser}
+          logs={logs}
+          loadingLogs={loadingLogs}
+          isSelf={viewUser.id === selfUser?.id}
+        />
+      )}
     </div>
   );
 }
