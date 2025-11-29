@@ -121,8 +121,8 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
           <div className="space-y-1">
             <label className="text-xs text-white/60">
               {stage === 'username'
-                ? 'Player First Name'
-                : 'Player Name (locked)'}
+                ? 'First Name'
+                : 'Name (locked)'}
             </label>
             <input
               className="
@@ -134,7 +134,7 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
                 focus:outline-none focus:border-lime-400
                 disabled:opacity-50
               "
-              placeholder="e.g., Brooks"
+              placeholder="Enter your first name"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               disabled={stage === 'pin'}

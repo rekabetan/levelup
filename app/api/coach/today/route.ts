@@ -16,7 +16,7 @@ export async function GET(req: Request) {
       );
     }
 
-    /* 1) Load coach profile to get team_id */
+    // 1) Load coach to get team_id
     const { data: coach, error: coachError } = await supabaseAdmin
       .from('profiles')
       .select('id, team_id, role')
@@ -39,17 +39,16 @@ export async function GET(req: Request) {
     }
 
     if (!coach.team_id) {
-      // Coach not assigned to a team yet
+      // No team assigned yet
       return NextResponse.json({ logs: [] });
     }
 
-    /* 2) Load all players on this coach's team */
+    // 2) Load all players on this team
     const { data: players, error: playersError } = await supabaseAdmin
       .from('profiles')
       .select('id, username, team_id, role')
       .eq('team_id', coach.team_id);
-      // If you want to restrict to players only, you can chain:
-      // .eq('role', 'player');
+      // Optionally: .eq('role', 'player');
 
     if (playersError) {
       console.error('Error loading team players', playersError);
@@ -64,36 +63,17 @@ export async function GET(req: Request) {
     }
 
     const playerIds = players.map((p) => p.id);
-    const playerIdSet = new Set(playerIds);
-
-    /* 3) Compute start/end of "today" in UTC */
-    const now = new Date();
-    const startOfDay = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      0,
-      0,
-      0,
-      0
-    );
-    const endOfDay = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      23,
-      59,
-      59,
-      999
+    const playersById = new Map(
+      players.map((p) => [p.id, { id: p.id, username: p.username }])
     );
 
-    /* 4) Fetch all logs for today from training_logs */
+    // 3) Fetch recent logs for those players (no date filter)
     const { data: logs, error: logsError } = await supabaseAdmin
       .from(LOGS_TABLE)
       .select('id, user_id, minutes, category, comment, created_at')
-      .gte('created_at', startOfDay.toISOString())
-      .lte('created_at', endOfDay.toISOString())
-      .order('created_at', { ascending: false });
+      .in('user_id', playerIds)
+      .order('created_at', { ascending: false })
+      .limit(200);
 
     if (logsError) {
       console.error('Error loading team logs', logsError);
@@ -103,20 +83,13 @@ export async function GET(req: Request) {
       );
     }
 
-    const playersById = new Map(
-      players.map((p) => [p.id, { id: p.id, username: p.username }])
-    );
+    const logsWithPlayers =
+      (logs ?? []).map((log) => ({
+        ...log,
+        player: playersById.get(log.user_id) || null,
+      }));
 
-    // 5) Filter logs to just this coach's team and attach player info
-    const teamLogs =
-      (logs ?? [])
-        .filter((log) => playerIdSet.has(log.user_id))
-        .map((log) => ({
-          ...log,
-          player: playersById.get(log.user_id) || null,
-        }));
-
-    return NextResponse.json({ logs: teamLogs });
+    return NextResponse.json({ logs: logsWithPlayers });
   } catch (err: any) {
     console.error('Unexpected error in /api/coach/today', err);
     return NextResponse.json(
