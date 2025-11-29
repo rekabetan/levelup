@@ -6,16 +6,27 @@ import type { User } from '@/lib/types';
 
 export function formatMinutesAsHoursLabel(totalMinutes: number): string {
   if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) {
-    return '0h 00m';
+    return "0m";
   }
 
   const rounded = Math.round(totalMinutes);
   const h = Math.floor(rounded / 60);
   const m = rounded % 60;
-  const mm = m.toString().padStart(2, '0'); // always 2 digits
 
-  return `${h}h ${mm}m`; // 200 -> 3h 20m, 60 -> 1h 00m
+  // If less than an hour → "15m"
+  if (h === 0) {
+    return `${m}m`;
+  }
+
+  // If exact hours → "1h", "2h"
+  if (m === 0) {
+    return `${h}h`;
+  }
+
+  // Standard case → "1h 30m"
+  return `${h}h ${m}m`;
 }
+
 
 type SetWeeklyGoalSheetProps = {
   open: boolean;

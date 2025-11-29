@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { Period } from '@/lib/types';
 import { formatMinutesAsHoursLabel } from '@/app/components/goal/SetWeeklyGoalSheet';
+import Card from '@/components/ui/Card';
+import Row from '@/components/ui/Row';
 
 type LeaderboardCardProps = {
   currentUser: string;
@@ -102,20 +104,7 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
     });
 
   return (
-    <div
-      className="
-        bg-white/5 backdrop-blur-xl
-        border border-white/10
-        rounded-2xl p-4
-        shadow-2xl shadow-black/70
-        text-white
-      "
-    >
-      {/* Title */}
-      <p className="text-xl font-bold uppercase tracking-wide mb-3 text-center w-full">
-        Leaderboard
-      </p>
-
+    <Card title="Leaderboard">
       {/* Period Tabs */}
       <div className="flex mb-3 rounded-full bg-black/60 border border-white/10 p-1">
         {tabs.map((tab) => (
@@ -163,19 +152,11 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
                 </span>
 
                 {/* Clickable pill/box linking to that player's profile */}
-<Link href={`/profile?id=${e.id}`} className="flex-1">
-  <div
-    className={`
-      flex justify-between items-center flex-1
-      rounded-xl px-3 py-2
-      transition cursor-pointer
-      ${
-        isMe
-          ? 'bg-white/5 backdrop-blur-xl border border-white/10 shadow-md text-white font-semibold'
-          : 'border border-white/15 text-white hover:bg-white/5'
-      }
-    `}
-  >
+                <Link href={`/profile?id=${e.id}`} className="flex-1">
+                  <Row
+                    highlighted={isMe}
+                    className="flex justify-between items-center flex-1 cursor-pointer"
+                  >
                     {/* Name + "me" star */}
                     <div className="flex items-center gap-1">
                       {isMe && (
@@ -192,13 +173,13 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
                     <span className="text-sm font-semibold">
                       {formatMinutesAsHoursLabel(e.total_minutes)}
                     </span>
-                  </div>
+                  </Row>
                 </Link>
               </li>
             );
           })}
         </ul>
       )}
-    </div>
+    </Card>
   );
 }
