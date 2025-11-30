@@ -11,6 +11,7 @@ import TeamsSection from '@/app/components/coach/TeamsSection';
 import FeedbackSection from '@/app/components/coach/FeedbackSection';
 import { Mail } from 'lucide-react';
 import Section from '@/components/ui/Section';
+import AppHeader from '@/app/components/layout/AppHeader';
 
 type CoachTeam = {
   id: string;
@@ -147,9 +148,12 @@ function ProfileHeader({
   );
 }
 
-type PlayerProfileProps = ProfileContentProps & { isSelf: boolean };
+type PlayerProfileProps = ProfileContentProps & {
+  isSelf: boolean;
+  onUnreadCountChange?: (count: number) => void;
+};
 
-function PlayerProfile({ user, logs, loadingLogs, isSelf }: PlayerProfileProps) {
+function PlayerProfile({ user, logs, loadingLogs, isSelf, onUnreadCountChange }: PlayerProfileProps) {
   const now = new Date();
   const weeklyStreak = computeWeeklyStreak(logs);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -261,22 +265,26 @@ function PlayerProfile({ user, logs, loadingLogs, isSelf }: PlayerProfileProps) 
     async function loadUnread() {
       if (!isSelf || user.role !== 'player') {
         setUnreadCount(0);
+        onUnreadCountChange?.(0);
         return;
       }
       try {
         const res = await fetch(`/api/feedback/unread?playerId=${user.id}`);
         if (!res.ok) {
           setUnreadCount(0);
+          onUnreadCountChange?.(0);
           return;
         }
         const data = await res.json();
         setUnreadCount(data.count ?? 0);
+        onUnreadCountChange?.(data.count ?? 0);
       } catch {
         setUnreadCount(0);
+        onUnreadCountChange?.(0);
       }
     }
     loadUnread();
-  }, [isSelf, user.id, user.role]);
+  }, [isSelf, user.id, user.role, onUnreadCountChange]);
 
   const loadFeedbackList = async () => {
     if (!isSelf || user.role !== 'player') return;
@@ -436,7 +444,7 @@ function PlayerProfile({ user, logs, loadingLogs, isSelf }: PlayerProfileProps) 
         <div className="mb-3">
           <h2 className="text-3xl font-bold text-white">History</h2>
 
-          <div className="mt-6 mb-4 flex items-center justify-start gap-2 text-sm font-semibold text-white/70">
+          <div className="mt-6 mb-4 flex items-center justify-end gap-2 text-sm font-semibold text-white/70">
             <button
               type="button"
               onClick={goToPreviousMonth}
@@ -688,10 +696,16 @@ function PlayerProfile({ user, logs, loadingLogs, isSelf }: PlayerProfileProps) 
               px-6 pt-5 pb-7
             "
           >
-            <h2 className="text-center text-xl font-bold uppercase tracking-wide text-white">
-              Feedback from {selectedFeedback.coach?.username || 'Coach'}
+            <h2 className="mb-4 text-center text-xl font-bold uppercase tracking-wide text-white">
+              Feedback
             </h2>
-            <p className="mt-1 text-center text-white/50 text-xs mb-4">
+            <p className="mb-4 text-center text-white/70 text-lg">
+              from{' '}
+              <span className="text-white font-semibold">
+                {selectedFeedback.coach?.username || 'Coach'}
+              </span>
+            </p>
+            <p className="text-center text-white/50 text-xs mb-4">
               {new Date(selectedFeedback.created_at).toLocaleDateString(undefined, {
                 month: 'short',
                 day: 'numeric',
@@ -823,6 +837,7 @@ export default function ProfileClient() {
 
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [headerUnreadCount, setHeaderUnreadCount] = useState(0);
 
   // ---------- Load logged-in user from localStorage ----------
   useEffect(() => {
@@ -951,45 +966,31 @@ export default function ProfileClient() {
     viewRole === 'coach' ||
     viewRole === 'admin' ||
     (!viewRole && (selfRole === 'coach' || selfRole === 'admin'));
+  const headerWeeklyStreak = computeWeeklyStreak(logs);
+
+  const handleSignOut = () => {
+    localStorage.removeItem('levelup_user');
+    window.location.href = '/';
+  };
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-20 w-full py-4 bg-black/80 backdrop-blur border-b border-white/10 shadow flex items-center justify-between px-4">
-        {/* Back button */}
-        <Link
-          href="/"
-          className="text-sm text-white/70 hover:text-white flex items-center gap-1"
-        >
-          <span className="text-lg">←</span>
-          <span>Back</span>
-        </Link>
-
-        <h1 className="text-lg font-semibold tracking-tight">Profile</h1>
-
-        {/* Show Sign Out whenever there *is* a logged-in user */}
-        {hasLoggedInUser ? (
-          <button
-            onClick={() => {
-              localStorage.removeItem('levelup_user');
-              window.location.href = '/';
-            }}
-            className="
-              text-xs font-medium 
-              px-3 py-1.5 
-              rounded-lg 
-              border border-white/20 
-              text-white/80 
-              hover:text-white hover:bg-white/10 
-              transition
-            "
+      <AppHeader
+        user={viewUser}
+        weeklyStreak={headerWeeklyStreak}
+        leftContent={
+          <Link
+            href="/"
+            className="text-sm text-white/70 hover:text-white flex items-center gap-1"
           >
-            Sign Out
-          </button>
-        ) : (
-          <div className="w-[72px]" />
-        )}
-      </header>
+            <span className="text-lg">←</span>
+            <span>Back</span>
+          </Link>
+        }
+        showSignOut={hasLoggedInUser}
+        onSignOut={handleSignOut}
+        unreadCount={viewUser.id === selfUser?.id && viewUser.role === 'player' ? headerUnreadCount : 0}
+      />
 
       {isCoachView ? (
         <CoachProfile user={viewUser} logs={logs} />
@@ -999,6 +1000,7 @@ export default function ProfileClient() {
           logs={logs}
           loadingLogs={loadingLogs}
           isSelf={viewUser.id === selfUser?.id}
+          onUnreadCountChange={(count) => setHeaderUnreadCount(count)}
         />
       )}
     </div>
