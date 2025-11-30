@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import Section from '@/components/ui/Section';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, CirclePlus } from 'lucide-react';
 
 type CoachTeam = {
   id: string;
@@ -20,8 +20,18 @@ type TeamsSectionProps = {
 };
 
 export default function TeamsSection({ teams, title }: TeamsSectionProps) {
+  const action = (
+    <Link
+      href="/coach/teams/create"
+      className="inline-flex items-center gap-2 text-sm font-semibold text-lime-300 hover:text-lime-200"
+    >
+      Create team
+      <CirclePlus className="h-4 w-4" />
+    </Link>
+  );
+
   return (
-    <Section title={title || 'Teams'} className="mt-8">
+    <Section title={title || 'Teams'} action={action} className="mt-8">
       {!teams.length ? (
         <p className="text-sm text-slate-400">
           You’re not assigned to any teams yet.

@@ -371,9 +371,26 @@ export default function Home() {
       {isTimerOpen && isTimerCollapsed && (
         <div className="fixed inset-x-0 bottom-0 z-40 px-4 pb-4">
           <div
-            className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-lg p-3 flex items-center"
+            className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-lg p-3 flex items-center gap-3"
             onClick={() => setIsTimerCollapsed(false)}
           >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeTimerSheet();
+                setTimerCapturedMinutes(null);
+                setTimerEntries([]);
+                setIsTimerDetailsOpen(false);
+                setIsTimerDetailsCollapsed(false);
+                setIsTimerDetailsFull(false);
+              }}
+              className="p-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition"
+              aria-label="Close timer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
             <div className="flex-1 flex justify-center">
               <span className="text-2xl font-black text-lime-400">
                 {new Date(elapsedMs).toISOString().substr(11, 8)}

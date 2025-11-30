@@ -41,20 +41,43 @@ export default function CoachHome({ user, onLogout }: CoachHomeProps) {
         const data = await res.json();
         console.log("today logs raw:", data.logs?.[0]);
 
-        const mapped: TodayEntry[] = (data.logs || []).map((log: any) => {
-          const playerName = log.player?.username ?? "Unknown";
+        const now = new Date();
+        const startOfToday = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate()
+        );
+        const startOfTomorrow = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() + 1
+        );
 
-          return {
-            playerName,
-            category: log.category ?? null,
-            minutes: log.minutes ?? 0,
-            timeLabel: new Date(log.created_at).toLocaleTimeString([], {
+        const mapped: TodayEntry[] = (data.logs || [])
+          .filter((log: any) => {
+            const createdAt = new Date(log.created_at);
+            return createdAt >= startOfToday && createdAt < startOfTomorrow;
+          })
+          .map((log: any) => {
+            const playerName = log.player?.username ?? "Unknown";
+            const createdAt = new Date(log.created_at);
+            const dateLabel = createdAt.toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            });
+            const timeLabel = createdAt.toLocaleTimeString([], {
               hour: "numeric",
               minute: "2-digit",
-            }),
-            note: log.comment ?? null,
-          };
-        });
+            });
+
+            return {
+              playerName,
+              category: log.category ?? null,
+              minutes: log.minutes ?? 0,
+              timeLabel: `${dateLabel} ${timeLabel}`,
+              note: log.comment ?? null,
+            };
+          });
 
         setTodayEntries(mapped);
       } catch (err) {
