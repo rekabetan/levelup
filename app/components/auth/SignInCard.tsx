@@ -72,6 +72,8 @@ export default function SignInCard({ onSignedIn }: SignInCardProps) {
         const user: User = {
           id: data.id,
           username: data.username,
+          first_name: data.first_name ?? null,
+          last_name: data.last_name ?? null,
           handle: data.handle ?? null,
           role: data.role ?? 'player',
           avatar_url: data.avatar_url ?? null,

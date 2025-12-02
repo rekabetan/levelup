@@ -16,8 +16,19 @@ export async function GET(req: Request) {
 
     const { data, error } = await supabaseAdmin
       .from('player_feedback')
-      .select('id, body, created_at, is_read, coach_id, coach:coach_id (username)')
+      .select(
+        [
+          'id',
+          'body',
+          'created_at',
+          'is_read',
+          'coach_id',
+          'status',
+          'coach:coach_id (username, first_name, last_name, role)',
+        ].join(', ')
+      )
       .eq('player_id', playerId)
+      .or('status.is.null,status.eq.submitted')
       .order('created_at', { ascending: false });
 
     if (error) {

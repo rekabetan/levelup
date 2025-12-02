@@ -18,7 +18,8 @@ export async function GET(req: Request) {
       .from('player_feedback')
       .select('id', { count: 'exact', head: true })
       .eq('player_id', playerId)
-      .eq('is_read', false);
+      .eq('is_read', false)
+      .or('status.is.null,status.eq.submitted');
 
     if (error) {
       console.error('[feedback/unread] error', error);

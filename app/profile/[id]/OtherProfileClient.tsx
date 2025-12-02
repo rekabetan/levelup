@@ -4,14 +4,20 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { User, LogEntry } from '@/lib/types';
-import ProfileAvatar from '@/app/components/profile/ProfileAvatar';
+import {
+  AdminProfileAvatar,
+  CoachProfileAvatar,
+  PlayerProfileAvatar,
+} from '@/app/components/profile/ProfileAvatar';
 import { computeWeeklyStreak } from '@/lib/streak';
 
 type OtherProfileClientProps = {
-  userId: string;
+  userSlug: string;
 };
 
-export default function OtherProfileClient({ userId }: OtherProfileClientProps) {
+export default function OtherProfileClient({
+  userSlug,
+}: OtherProfileClientProps) {
   const [user, setUser] = useState<User | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,17 +27,21 @@ export default function OtherProfileClient({ userId }: OtherProfileClientProps) 
       try {
         setLoading(true);
 
-        const [usersRes, logsRes] = await Promise.all([
-          fetch('/api/users'),
-          fetch(`/api/logs?userId=${userId}`),
-        ]);
+        const normalizedHandle =
+          userSlug?.trim().replace(/^@/, '').toLowerCase() || null;
 
-        // ----- USERS -----
+        const usersRes = await fetch('/api/users');
         let foundUser: User | null = null;
         if (usersRes.ok) {
           const usersData = await usersRes.json();
           const users = (usersData.users || []) as User[];
-          foundUser = users.find((u) => u.id === userId) || null;
+          foundUser =
+            (normalizedHandle &&
+              users.find(
+                (u) => u.handle?.toLowerCase() === normalizedHandle
+              )) ||
+            users.find((u) => u.id === userSlug) ||
+            null;
         } else {
           console.error(
             'Error from /api/users:',
@@ -42,16 +52,20 @@ export default function OtherProfileClient({ userId }: OtherProfileClientProps) 
 
         setUser(foundUser);
 
-        // ----- LOGS -----
-        if (logsRes.ok) {
-          const logsData = await logsRes.json();
-          setLogs((logsData.logs || []) as LogEntry[]);
+        if (foundUser?.id) {
+          const logsRes = await fetch(`/api/logs?userId=${foundUser.id}`);
+          if (logsRes.ok) {
+            const logsData = await logsRes.json();
+            setLogs((logsData.logs || []) as LogEntry[]);
+          } else {
+            console.error(
+              'Error from /api/logs:',
+              logsRes.status,
+              await logsRes.text()
+            );
+            setLogs([]);
+          }
         } else {
-          console.error(
-            'Error from /api/logs:',
-            logsRes.status,
-            await logsRes.text()
-          );
           setLogs([]);
         }
       } catch (err) {
@@ -64,7 +78,7 @@ export default function OtherProfileClient({ userId }: OtherProfileClientProps) 
     }
 
     load();
-  }, [userId]);
+  }, [userSlug]);
 
   if (loading) {
     return (
@@ -86,6 +100,8 @@ export default function OtherProfileClient({ userId }: OtherProfileClientProps) 
   }
 
   const weeklyStreak = computeWeeklyStreak(logs);
+  const isAdmin = user.role === 'admin';
+  const isCoach = user.role === 'coach';
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
@@ -108,12 +124,18 @@ export default function OtherProfileClient({ userId }: OtherProfileClientProps) 
       <main className="flex-1 w-full px-6 py-6 max-w-lg mx-auto">
         <section className="flex flex-col items-center text-center relative">
           <div className="relative mb-6">
-            <ProfileAvatar
-              user={user}
-              weeklyStreak={weeklyStreak}
-              size="lg"
-              showBadge={true}
-            />
+            {isAdmin ? (
+              <AdminProfileAvatar user={user} size="lg" />
+            ) : isCoach ? (
+              <CoachProfileAvatar user={user} size="lg" />
+            ) : (
+              <PlayerProfileAvatar
+                user={user}
+                weeklyStreak={weeklyStreak}
+                size="lg"
+                showBadge={true}
+              />
+            )}
           </div>
 
           <div className="flex flex-col items-center space-y-1 mb-2">

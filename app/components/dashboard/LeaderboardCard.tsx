@@ -15,13 +15,39 @@ type LeaderboardCardProps = {
 type User = {
   id: string;
   username: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  handle?: string | null;
   role?: string | null; // optional – may or may not be present
 };
 
 type LeaderboardEntry = {
+  id: string;
   username: string;
+  first_name?: string | null;
+  last_name?: string | null;
   total_minutes: number;
 };
+
+function formatShortName(user: User) {
+  const first = user.first_name?.trim();
+  const lastInitial = user.last_name?.trim()?.charAt(0);
+
+  if (first) {
+    return lastInitial ? `${first} ${lastInitial.toUpperCase()}` : first;
+  }
+
+  const parts = user.username?.trim().split(/\s+/).filter(Boolean) ?? [];
+  if (parts.length === 0) return user.username;
+
+  const derivedFirst = parts[0];
+  const derivedLastInitial =
+    parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
+
+  return derivedLastInitial
+    ? `${derivedFirst} ${derivedLastInitial.toUpperCase()}`
+    : derivedFirst;
+}
 
 export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
   const [period, setPeriod] = useState<Period>('week');
@@ -87,12 +113,16 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
     hasRoleInfo && hasPlayers ? users.filter((u) => u.role === 'player') : users;
 
   // Merge: every effective user gets a row; minutes from entries if present, else 0
+  const entryById = new Map(entries.map((e) => [e.id, e]));
+
   const rows = effectiveUsers
     .map((u) => {
-      const match = entries.find((e) => e.username === u.username);
+      const match = entryById.get(u.id);
       return {
         id: u.id,
         username: u.username,
+        handle: u.handle ?? null,
+        displayName: formatShortName(u) || u.username,
         total_minutes: match?.total_minutes ?? 0,
       };
     })
@@ -100,7 +130,7 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
       if (b.total_minutes !== a.total_minutes) {
         return b.total_minutes - a.total_minutes;
       }
-      return a.username.localeCompare(b.username);
+      return a.displayName.localeCompare(b.displayName);
     });
 
   return (
@@ -143,6 +173,10 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
                 : idx === 2
                 ? '🥉'
                 : '';
+            const slug = e.handle
+              ? e.handle.replace(/^@/, '')
+              : e.id;
+            const profileHref = `/${encodeURIComponent(slug)}`;
 
             return (
               <ListItem key={e.id} className="items-center gap-2">
@@ -152,7 +186,7 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
                 </span>
 
                 {/* Clickable pill/box linking to that player's profile */}
-                <Link href={`/profile?id=${e.id}`} className="flex-1">
+                <Link href={profileHref} className="flex-1">
                   <div className="flex justify-between items-center flex-1 cursor-pointer px-3">
                     {/* Name + "me" star */}
                     <div className="flex items-center gap-1">
@@ -162,7 +196,7 @@ export default function LeaderboardCard({ currentUser }: LeaderboardCardProps) {
                         </span>
                       )}
                       <span className={isMe ? 'font-semibold' : ''}>
-                        {e.username}
+                        {e.displayName}
                       </span>
                     </div>
 

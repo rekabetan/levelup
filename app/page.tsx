@@ -11,6 +11,9 @@ import { supabase } from '@/lib/supabaseClient';
 
 import FloatingActionButton from '@/app/components/ui/FloatingActionButton';
 import LogTimeSheet from '@/app/components/logs/LogTimeSheet';
+import NotificationSheet, {
+  type NotificationItem,
+} from '@/app/components/ui/NotificationSheet';
 
 import PlayerHome from '@/app/components/home/PlayerHome';
 import CoachHome from '@/app/components/home/CoachHome';
@@ -59,6 +62,10 @@ export default function Home() {
   const categoryButtonRefs = useRef<Record<string, Partial<Record<Category, HTMLButtonElement | null>>>>({});
   const categoryScrollRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [loggingSplits, setLoggingSplits] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const unreadNotifications = notifications.filter((n) => !n.is_read).length;
 
   const [homeView, setHomeView] = useState<HomeViewMode>('coach');
 
@@ -81,10 +88,14 @@ export default function Home() {
         const res = await fetch(`/api/profile?userId=${parsed.id}`);
         if (res.ok) {
           const data = await res.json();
-          const freshUser = data.user as User;
-
-          setUser(freshUser);
-          localStorage.setItem('levelup_user', JSON.stringify(freshUser));
+          if (data.user) {
+            const freshUser = data.user as User;
+            setUser(freshUser);
+            localStorage.setItem('levelup_user', JSON.stringify(freshUser));
+          } else {
+            // If backend doesn't return a user, keep the cached one
+            console.warn('Profile sync returned no user; keeping cached user');
+          }
         }
 
         setLoaded(true);
@@ -142,6 +153,41 @@ export default function Home() {
       document.documentElement.style.overscrollBehavior = originalOverscroll;
     };
   }, [isLogSheetOpen, isTimerOpen, isTimerCollapsed, isTimerDetailsOpen]);
+
+  // Load notifications (placeholder: reuse feedback unread for now)
+  useEffect(() => {
+    const loadNotifications = async () => {
+      if (!notificationsOpen || !user) return;
+      setNotificationsLoading(true);
+      try {
+        const res = await fetch('/api/feedback/list?playerId=' + user.id);
+        if (!res.ok) {
+          setNotifications([]);
+        } else {
+          const data = await res.json();
+          const items = (data.feedback || []) as any[];
+          const mapped: NotificationItem[] = items.map((f) => ({
+            id: f.id,
+            title: '',
+            body: f.body ?? null,
+            created_at: f.created_at,
+            is_read: !!f.is_read,
+            kind: 'feedback',
+            coach_first_name: f.coach?.first_name ?? null,
+            coach_last_name: f.coach?.last_name ?? null,
+            coach_username: f.coach?.username ?? null,
+            coach_role: f.coach?.role ?? null,
+          }));
+          setNotifications(mapped);
+        }
+      } catch {
+        setNotifications([]);
+      } finally {
+        setNotificationsLoading(false);
+      }
+    };
+    loadNotifications();
+  }, [notificationsOpen, user]);
 
   // Snap selected category into view horizontally
   useEffect(() => {
@@ -334,7 +380,12 @@ export default function Home() {
         homeView={homeView}
         onHomeViewChange={setHomeView}
         showAdminViewSwitcher={showAdminViewSwitcher}
-        unreadCount={user?.role === 'player' ? unreadCount : 0}
+        messagesUnreadCount={user?.role === 'player' ? unreadCount : 0}
+        notificationsUnreadCount={unreadNotifications}
+        onMessagesClick={() => {
+          window.location.href = '/profile?openMessages=1';
+        }}
+        onNotificationsClick={() => setNotificationsOpen(true)}
       />
 
       {/* MAIN CONTENT AREA */}
@@ -350,6 +401,7 @@ export default function Home() {
             <FloatingActionButton
               onClick={() => handleTimerStart()}
               positionClassName="bottom-24 right-6"
+              variant="secondary"
               icon={<Clock className="h-6 w-6" />}
               ariaLabel="Start timer"
             />
@@ -367,6 +419,27 @@ export default function Home() {
           )}
         </>
       )}
+
+      <NotificationSheet
+        open={notificationsOpen}
+        notifications={notifications}
+        loading={notificationsLoading}
+        onClose={() => setNotificationsOpen(false)}
+        onMarkAllRead={() =>
+          setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
+        }
+        onSelect={(id) => {
+          setNotifications((prev) =>
+            prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+          );
+          setNotificationsOpen(false);
+          if (id) {
+            window.location.href = `/profile?feedbackId=${encodeURIComponent(id)}`;
+          } else {
+            window.location.href = '/profile';
+          }
+        }}
+      />
 
       {isTimerOpen && isTimerCollapsed && (
         <div className="fixed inset-x-0 bottom-0 z-40 px-4 pb-4">

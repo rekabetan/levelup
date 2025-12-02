@@ -10,9 +10,24 @@ import AppHeader from '@/app/components/layout/AppHeader';
 import PlayerProfile from '@/app/components/profile/PlayerProfile';
 import CoachProfile from '@/app/components/profile/CoachProfile';
 
-export default function ProfileClient() {
+type ProfileClientProps = {
+  initialHandle?: string | null;
+  initialUserId?: string | null;
+};
+
+export default function ProfileClient({
+  initialHandle = null,
+  initialUserId = null,
+}: ProfileClientProps = {}) {
   const searchParams = useSearchParams();
-  const viewedUserId = searchParams.get('id'); // ?id=... when tapped from leaderboard
+  const viewedUserHandle =
+    initialHandle ??
+    searchParams.get('handle'); // ?handle=... when tapped from leaderboard
+  const viewedUserId =
+    initialUserId ??
+    searchParams.get('id'); // legacy fallback
+  const initialFeedbackId = searchParams.get('feedbackId');
+  const initialMessagesOpen = searchParams.get('openMessages') === '1';
 
   const [selfUser, setSelfUser] = useState<User | null>(null);
   const [viewUser, setViewUser] = useState<User | null>(null);
@@ -21,6 +36,7 @@ export default function ProfileClient() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [headerUnreadCount, setHeaderUnreadCount] = useState(0);
+  const [openMessagesSignal, setOpenMessagesSignal] = useState(0);
 
   // ---------- Load logged-in user from localStorage ----------
   useEffect(() => {
@@ -45,8 +61,8 @@ export default function ProfileClient() {
       try {
         setUserLoaded(false);
 
-        if (viewedUserId) {
-          // Viewing someone specific via ?id=...
+        if (viewedUserHandle || viewedUserId) {
+          // Viewing someone specific via ?handle=... (or legacy ?id=...)
           const res = await fetch('/api/users');
           if (!res.ok) {
             console.error(
@@ -58,11 +74,20 @@ export default function ProfileClient() {
           } else {
             const data = await res.json();
             const users = (data.users || []) as User[];
-            const found = users.find((u) => u.id === viewedUserId) || null;
+            const normalizedHandle =
+              viewedUserHandle?.replace('@', '').toLowerCase() ?? null;
+
+            const found =
+              (normalizedHandle &&
+                users.find(
+                  (u) => u.handle?.toLowerCase() === normalizedHandle
+                )) ||
+              users.find((u) => u.id === viewedUserId) ||
+              null;
             setViewUser(found);
           }
         } else {
-          // Viewing own profile, no ?id=...
+          // Viewing own profile, no ?handle=... or ?id=...
           const stored = localStorage.getItem('levelup_user');
           if (!stored) {
             setViewUser(null);
@@ -86,7 +111,7 @@ export default function ProfileClient() {
     }
 
     loadUser();
-  }, [viewedUserId]);
+  }, [viewedUserHandle, viewedUserId]);
 
   // ---------- Load logs for the viewed user ----------
   useEffect(() => {
@@ -123,7 +148,7 @@ export default function ProfileClient() {
   if (!userLoaded) return null;
 
   if (!viewUser) {
-    const message = viewedUserId
+    const message = viewedUserHandle || viewedUserId
       ? 'User not found.'
       : "You’re not signed in.";
 
@@ -159,7 +184,7 @@ export default function ProfileClient() {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col">
       <AppHeader
-        user={viewUser}
+        user={selfUser ?? viewUser}
         weeklyStreak={headerWeeklyStreak}
         leftContent={
           <Link
@@ -172,11 +197,13 @@ export default function ProfileClient() {
         }
         showSignOut={hasLoggedInUser}
         onSignOut={handleSignOut}
-        unreadCount={
+        messagesUnreadCount={
           viewUser.id === selfUser?.id && viewUser.role === 'player'
             ? headerUnreadCount
             : 0
         }
+        notificationsUnreadCount={0}
+        onMessagesClick={() => setOpenMessagesSignal((prev) => prev + 1)}
       />
 
       {isCoachView ? (
@@ -188,6 +215,9 @@ export default function ProfileClient() {
           loadingLogs={loadingLogs}
           isSelf={viewUser.id === selfUser?.id}
           onUnreadCountChange={(count) => setHeaderUnreadCount(count)}
+          initialFeedbackId={initialFeedbackId}
+          initialMessagesOpen={initialMessagesOpen}
+          openMessagesSignal={openMessagesSignal}
         />
       )}
     </div>

@@ -23,7 +23,7 @@ export default function TeamsSection({ teams, title }: TeamsSectionProps) {
   const action = (
     <Link
       href="/coach/teams/create"
-      className="inline-flex items-center gap-2 text-sm font-semibold text-lime-300 hover:text-lime-200"
+      className="inline-flex items-center gap-2 text-sm font-semibold text-lime-500 hover:text-lime-400"
     >
       Create team
       <CirclePlus className="h-4 w-4" />

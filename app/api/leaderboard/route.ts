@@ -8,14 +8,14 @@ function getDateRange(period: Period) {
   const now = new Date();
 
   if (period === 'week') {
-    // Start of current week (Monday)
+    // Start of current week (Sunday) to match streak/recents views
     const day = now.getDay(); // 0 (Sun) - 6 (Sat)
-    const diffToMonday = (day + 6) % 7; // converts so Monday is 0
     const start = new Date(
       now.getFullYear(),
       now.getMonth(),
-      now.getDate() - diffToMonday
+      now.getDate() - day
     );
+    start.setHours(0, 0, 0, 0);
     const end = new Date(start);
     end.setDate(start.getDate() + 7);
     return { from: start, to: end };
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
   // 1) Fetch all users (for now, all profiles; later: filter by teamId)
   let profilesQuery = supabaseAdmin
     .from('profiles')
-    .select('id, username')
+    .select('id, username, first_name, last_name')
     .order('username', { ascending: true });
 
   // If/when you add a team_id column to profiles, you can do:
@@ -102,7 +102,10 @@ export async function GET(req: NextRequest) {
   // 4) Build entries: one per user, 0 if no logs
   const entries = users
     .map((u) => ({
+      id: u.id,
       username: u.username,
+      first_name: (u as any).first_name ?? null,
+      last_name: (u as any).last_name ?? null,
       total_minutes: totalsByUser.get(u.id) ?? 0,
     }))
     // 5) Sort by minutes desc, then name asc

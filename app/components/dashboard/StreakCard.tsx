@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import type { LogEntry } from '@/lib/types';
-import { computeWeeklyStreak } from '@/lib/streak';
+import { computeWeeklyStreak, getQualifyingDaysThisWeek } from '@/lib/streak';
 
 type StreakCardProps = {
   userId: string;
@@ -32,11 +32,8 @@ export default function StreakCard({ userId }: StreakCardProps) {
 
   const weeklyStreak = computeWeeklyStreak(logs);
 
-  // Count unique days logged (any minutes)
-  const uniqueDates = new Set(
-    logs.map((l) => new Date(l.created_at).toDateString())
-  );
-  const daysLoggedCount = uniqueDates.size;
+  // How many qualifying days (15+ min) logged this week
+  const qualifyingDaysThisWeek = getQualifyingDaysThisWeek(logs);
 
   return (
     <div
@@ -123,7 +120,7 @@ export default function StreakCard({ userId }: StreakCardProps) {
               key={i}
               className={`
                 h-3 flex-1 rounded-md transition-all
-                ${daysLoggedCount >= i ? 'bg-lime-400' : 'bg-white/20'}
+                ${qualifyingDaysThisWeek >= i ? 'bg-lime-400' : 'bg-white/20'}
               `}
             />
           ))}

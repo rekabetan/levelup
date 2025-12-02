@@ -16,7 +16,8 @@ export async function POST(req: Request) {
     const { error } = await supabaseAdmin
       .from('player_feedback')
       .update({ is_read: true })
-      .eq('id', feedbackId);
+      .eq('id', feedbackId)
+      .or('status.is.null,status.eq.submitted');
 
     if (error) {
       console.error('[feedback/mark-read] error', error);

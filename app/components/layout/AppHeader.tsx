@@ -2,10 +2,14 @@
 'use client';
 
 import Link from 'next/link';
-import { ReactNode } from 'react';
-import { Bell } from 'lucide-react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
+import { Bell, MessageCircle } from 'lucide-react';
 import type { User } from '@/lib/types';
-import ProfileAvatar from '@/app/components/profile/ProfileAvatar';
+import {
+  AdminProfileAvatar,
+  CoachProfileAvatar,
+  PlayerProfileAvatar,
+} from '@/app/components/profile/ProfileAvatar';
 
 type HomeViewMode = 'player' | 'coach' | 'admin';
 
@@ -19,7 +23,10 @@ type AppHeaderProps = {
   rightExtras?: ReactNode;
   showSignOut?: boolean;
   onSignOut?: () => void;
-  unreadCount?: number;
+  messagesUnreadCount?: number;
+  notificationsUnreadCount?: number;
+  onNotificationsClick?: () => void;
+  onMessagesClick?: () => void;
 };
 
 function ArrowUpIcon() {
@@ -46,7 +53,10 @@ export default function AppHeader({
   rightExtras,
   showSignOut,
   onSignOut,
-  unreadCount = 0,
+  messagesUnreadCount = 0,
+  notificationsUnreadCount = 0,
+  onNotificationsClick,
+  onMessagesClick,
 }: AppHeaderProps) {
   const renderAdminSwitcher =
     showAdminViewSwitcher &&
@@ -55,9 +65,29 @@ export default function AppHeader({
     onHomeViewChange;
 
   const streakValue = typeof weeklyStreak === 'number' ? weeklyStreak : 0;
+  const isAdmin = user?.role === 'admin';
+  const isCoach = user?.role === 'coach';
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleOutside = (event: MouseEvent | TouchEvent) => {
+      if (
+        accountMenuRef.current &&
+        event.target instanceof Node &&
+        !accountMenuRef.current.contains(event.target)
+      ) {
+        setIsAccountMenuOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleOutside);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutside);
+    };
+  }, []);
 
   return (
-    <header className="sticky top-0 z-20 w-full py-4 bg-black/80 backdrop-blur border-b border-white/10 shadow-md flex items-center justify-between px-4">
+    <header className="sticky top-0 z-20 w-full py-4 bg-black/80 backdrop-blur border-b border-white/10 shadow-md flex items-center justify-between px-4 relative">
       {/* Left: either admin switcher or custom content */}
       <div className="min-w-[96px] flex items-center">
         {renderAdminSwitcher ? (
@@ -93,7 +123,7 @@ export default function AppHeader({
       </div>
 
       {/* Center title */}
-      <h1 className="text-3xl font-black flex items-center justify-center leading-none">
+      <h1 className="text-3xl font-black flex items-center justify-center leading-none absolute left-1/2 -translate-x-1/2">
         <span className="leading-none">lvl</span>
         <ArrowUpIcon />
       </h1>
@@ -102,45 +132,81 @@ export default function AppHeader({
       <div className="min-w-[96px] flex items-center justify-end gap-2">
         {rightExtras}
 
-        {showSignOut && onSignOut && (
-          <button
-            onClick={onSignOut}
-            className="
-              text-[11px] font-medium 
-              px-2.5 py-1.5 
-              rounded-lg 
-              border border-white/20 
-              text-white/80 
-              hover:text-white hover:bg-white/10 
-              transition
-            "
-          >
-            Sign Out
-          </button>
-        )}
-
         {user && (
-          <>
+          <div className="flex items-center gap-2 relative" ref={accountMenuRef}>
             <button
               type="button"
-              className="relative h-10 w-10 flex items-center justify-center text-white/70 hover:text-white transition mr-2"
-              aria-label="Notifications"
+              className="relative h-10 w-10 flex items-center justify-center text-white/70 hover:text-white transition"
+              aria-label="Messages"
+              onClick={onMessagesClick}
             >
-              <Bell className="h-5 w-5" />
-              {unreadCount > 0 && (
+              <MessageCircle className="h-5 w-5" />
+              {messagesUnreadCount > 0 && (
                 <span className="absolute top-[7.5px] right-2.5 h-2.5 w-2.5 rounded-full bg-lime-400" />
               )}
             </button>
 
-            <Link href="/profile" className="block">
-              <ProfileAvatar
-                user={user}
-                weeklyStreak={streakValue}
-                size="sm"
-                showBadge={false}
-              />
-            </Link>
-          </>
+            {showSignOut && onSignOut ? (
+              <button
+                type="button"
+                onClick={() => setIsAccountMenuOpen((prev) => !prev)}
+                className="block"
+                aria-label="Account menu"
+              >
+                {isAdmin ? (
+                  <AdminProfileAvatar user={user} size="sm" />
+                ) : isCoach ? (
+                  <CoachProfileAvatar user={user} size="sm" />
+                ) : (
+                  <PlayerProfileAvatar
+                    user={user}
+                    weeklyStreak={streakValue}
+                    size="sm"
+                    showBadge={false}
+                  />
+                )}
+              </button>
+            ) : (
+              <Link href="/profile" className="block">
+                {isAdmin ? (
+                  <AdminProfileAvatar user={user} size="sm" />
+                ) : isCoach ? (
+                  <CoachProfileAvatar user={user} size="sm" />
+                ) : (
+                  <PlayerProfileAvatar
+                    user={user}
+                    weeklyStreak={streakValue}
+                    size="sm"
+                    showBadge={false}
+                  />
+                )}
+              </Link>
+            )}
+
+            {showSignOut && onSignOut && isAccountMenuOpen && (
+              <div
+                className="
+                  absolute right-0 top-full mt-2
+                  rounded-xl border border-white/10
+                  bg-black/90 backdrop-blur
+                  shadow-lg shadow-black/40
+                  px-3 py-2
+                  min-w-[140px]
+                "
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAccountMenuOpen(false);
+                    onSignOut();
+                  }}
+                  className="w-full text-left text-sm font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg px-3 py-2 transition"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </header>

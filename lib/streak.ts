@@ -68,17 +68,23 @@ export function computeWeeklyStreak(entries: LogEntry[]): number {
     if (days >= 4) qualifyingWeeks.add(weekStart);
   });
 
-  if (qualifyingWeeks.size === 0) return 0;
+ if (qualifyingWeeks.size === 0) return 0;
 
-  // 4) compute streak from *current* week backwards
+  // 4) compute streak from the most recent qualifying week backwards.
+  // If the current week hasn't qualified yet (it's early in the week),
+  // we look at the previous week so the streak doesn't prematurely drop to 0.
   const now = new Date();
-  let currentWeekStart = getWeekStart(now);
+  const currentWeekStart = getWeekStart(now);
   const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
 
   let streak = 0;
-  while (qualifyingWeeks.has(currentWeekStart)) {
+  let cursor = qualifyingWeeks.has(currentWeekStart)
+    ? currentWeekStart
+    : currentWeekStart - oneWeekMs;
+
+  while (qualifyingWeeks.has(cursor)) {
     streak += 1;
-    currentWeekStart -= oneWeekMs; // previous week
+    cursor -= oneWeekMs; // previous week
   }
 
   return streak;

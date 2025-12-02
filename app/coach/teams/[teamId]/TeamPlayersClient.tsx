@@ -20,6 +20,14 @@ type Player = {
   handle?: string | null;
 };
 
+type DraftFeedback = {
+  id: string;
+  player_id: string;
+  body: string;
+  status: 'draft' | 'submitted';
+  created_at: string;
+};
+
 type Props = {
   teamId: string;
 };
@@ -40,6 +48,9 @@ export default function TeamPlayersClient({ teamId }: Props) {
   const [feedbackText, setFeedbackText] = useState('');
   const [saving, setSaving] = useState(false);
   const [sheetError, setSheetError] = useState<string | null>(null);
+  const [playerDrafts, setPlayerDrafts] = useState<Record<string, DraftFeedback>>({});
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
+  const [loadingDrafts, setLoadingDrafts] = useState(false);
   const [coachId, setCoachId] = useState<string | null>(null);
 
   const routeParams = useParams<{ teamId?: string }>();
@@ -97,12 +108,46 @@ export default function TeamPlayersClient({ teamId }: Props) {
     }
   }, []);
 
+  useEffect(() => {
+    async function loadDrafts() {
+      if (!coachId || players.length === 0) return;
+      setLoadingDrafts(true);
+      try {
+        const playerIds = players.map((p) => p.id).join(',');
+        const res = await fetch(
+          `/api/feedback/drafts?coachId=${coachId}&playerIds=${playerIds}`
+        );
+        if (!res.ok) {
+          console.error('Failed to load drafts', await res.text());
+          return;
+        }
+        const data = await res.json();
+        const map = (data.drafts || []).reduce(
+          (acc: Record<string, DraftFeedback>, draft: DraftFeedback) => {
+            acc[draft.player_id] = draft;
+            return acc;
+          },
+          {}
+        );
+        setPlayerDrafts(map);
+      } catch (err) {
+        console.error('Error loading drafts', err);
+      } finally {
+        setLoadingDrafts(false);
+      }
+    }
+
+    loadDrafts();
+  }, [coachId, players]);
+
   const ageLabel = formatAgeLabel(team?.age_group);
   const title = [team?.name, ageLabel].filter(Boolean).join(' ');
 
   const openFeedback = (player: Player) => {
     setSelectedPlayer(player);
-    setFeedbackText('');
+    const existingDraft = playerDrafts[player.id];
+    setFeedbackText(existingDraft?.body || '');
+    setCurrentDraftId(existingDraft?.id || null);
     setSheetError(null);
     setFeedbackOpen(true);
   };
@@ -111,6 +156,9 @@ export default function TeamPlayersClient({ teamId }: Props) {
     setFeedbackOpen(false);
     setSaving(false);
     setSheetError(null);
+    setSelectedPlayer(null);
+    setCurrentDraftId(null);
+    setFeedbackText('');
   };
 
   const handleSave = async (action: 'save' | 'submit') => {
@@ -125,6 +173,7 @@ export default function TeamPlayersClient({ teamId }: Props) {
     }
     setSaving(true);
     setSheetError(null);
+    const status = action === 'save' ? 'draft' : 'submitted';
 
     try {
       const res = await fetch('/api/feedback', {
@@ -134,12 +183,41 @@ export default function TeamPlayersClient({ teamId }: Props) {
           coachId,
           playerId: selectedPlayer.id,
           body: feedbackText,
+          status,
+          feedbackId: currentDraftId || undefined,
         }),
       });
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || 'Could not save feedback');
+      const data = await res.json();
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || 'Could not save feedback');
+      }
+
+      if (status === 'draft') {
+        const draftId = data?.id || currentDraftId || '';
+        setPlayerDrafts((prev) => ({
+          ...prev,
+          [selectedPlayer.id]: {
+            id: draftId,
+            player_id: selectedPlayer.id,
+            body: feedbackText,
+            status: 'draft',
+            created_at:
+              prev[selectedPlayer.id]?.created_at || new Date().toISOString(),
+          },
+        }));
+        setCurrentDraftId(draftId);
+      } else {
+        setPlayerDrafts((prev) => {
+          const next = { ...prev };
+          delete next[selectedPlayer.id];
+          return next;
+        });
+        setCurrentDraftId(null);
+      }
+
+      if (status === 'submitted') {
+        setFeedbackText('');
       }
 
       closeFeedback();
@@ -194,6 +272,11 @@ export default function TeamPlayersClient({ teamId }: Props) {
             <p className="text-base text-white/60">No players on this team yet.</p>
           ) : (
             <ul className="space-y-4">
+              {loadingDrafts && (
+                <li className="text-xs text-white/50">
+                  Checking for saved drafts…
+                </li>
+              )}
               {players.map((player) => (
                 <li
                   key={player.id}
@@ -205,17 +288,34 @@ export default function TeamPlayersClient({ teamId }: Props) {
                     </span>
                   </div>
 
-                  <button
-                    type="button"
-                    className={cn(
-                      'px-3 py-1.5 rounded-full text-xs font-semibold',
-                      'bg-lime-400 text-black transition',
-                      'hover:bg-lime-300 active:scale-95'
+                  <div className="flex items-center gap-2">
+                    {playerDrafts[player.id] && (
+                      <button
+                        type="button"
+                        className={cn(
+                          'px-3 py-1.5 rounded-full text-xs font-semibold',
+                          'border border-lime-300/60 text-lime-200',
+                          'bg-white/5 hover:bg-white/10 transition',
+                          'active:scale-95'
+                        )}
+                        onClick={() => openFeedback(player)}
+                      >
+                        Edit Draft
+                      </button>
                     )}
-                    onClick={() => openFeedback(player)}
-                  >
-                    Give Feedback
-                  </button>
+
+                    <button
+                      type="button"
+                      className={cn(
+                        'px-3 py-1.5 rounded-full text-xs font-semibold',
+                        'bg-lime-400 text-black transition',
+                        'hover:bg-lime-300 active:scale-95'
+                      )}
+                      onClick={() => openFeedback(player)}
+                    >
+                      Give Feedback
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -245,8 +345,13 @@ export default function TeamPlayersClient({ teamId }: Props) {
               <h2 className="mb-4 text-center text-xl font-bold uppercase tracking-wide text-white">
                 Give Feedback
               </h2>
+              {currentDraftId && (
+                <p className="text-center text-xs font-semibold uppercase tracking-wide text-lime-200">
+                  Resuming draft
+                </p>
+              )}
               {selectedPlayer && (
-                <p className="mb-4 text-center text-white/70 text-lg">
+                <p className="mb-4 mt-1 text-center text-white/70 text-lg">
                   to <span className="text-white font-semibold">{selectedPlayer.username}</span>
                 </p>
               )}

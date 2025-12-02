@@ -1,9 +1,12 @@
 // app/components/profile/ProfileHeader.tsx
 'use client';
 
-import { Mail } from 'lucide-react';
 import type { User } from '@/lib/types';
-import ProfileAvatar from '@/app/components/profile/ProfileAvatar';
+import {
+  AdminProfileAvatar,
+  CoachProfileAvatar,
+  PlayerProfileAvatar,
+} from '@/app/components/profile/ProfileAvatar';
 
 function formatAgeLabel(age?: string | number | null) {
   if (age === null || age === undefined) return null;
@@ -17,9 +20,7 @@ type ProfileHeaderProps = {
   orgNameOverride?: string | null;
   teamNameOverride?: string | null;
   teamAgeOverride?: string | number | null;
-  showMessageButton?: boolean;
-  unreadCount?: number;
-  onMessageClick?: () => void;
+  subtitle?: string | null;
 };
 
 export default function ProfileHeader({
@@ -28,57 +29,48 @@ export default function ProfileHeader({
   orgNameOverride,
   teamNameOverride,
   teamAgeOverride,
-  showMessageButton = false,
-  unreadCount = 0,
-  onMessageClick,
+  subtitle = null,
 }: ProfileHeaderProps) {
+  const isAdmin = user.role === 'admin';
+  const isCoach = user.role === 'coach';
+  const formatDisplayName = () => {
+    const first = user.first_name?.trim();
+    const lastInitial = user.last_name?.trim()?.charAt(0)?.toUpperCase();
+    if (first) {
+      return lastInitial ? `${first} ${lastInitial}` : first;
+    }
+    return user.username || 'Player';
+  };
+
   return (
     <section className="flex flex-col items-start text-left relative">
       <div className="relative mb-4 flex items-end gap-4">
-        <ProfileAvatar
-          user={user}
-          weeklyStreak={weeklyStreak}
-          size="lg"
-          showBadge={true}
-        />
-
-        {showMessageButton && (
-          <button
-            type="button"
-            onClick={onMessageClick}
-            className="
-              h-10 w-10 flex items-center justify-center
-              rounded-full border border-white/30
-              text-white/70
-              hover:text-white hover:border-white/60 hover:bg-white/10
-              transition
-              active:scale-95
-              relative
-            "
-            aria-label="Messages"
-          >
-            <Mail className="h-4 w-4" />
-            {unreadCount > 0 && (
-              <span
-                className="
-                  absolute -top-1 -right-1
-                  h-3 w-3 rounded-full
-                  bg-lime-400
-                  ring-2 ring-black
-                "
-              />
-            )}
-          </button>
+        {isAdmin ? (
+          <AdminProfileAvatar user={user} size="lg" />
+        ) : isCoach ? (
+          <CoachProfileAvatar user={user} size="lg" />
+        ) : (
+          <PlayerProfileAvatar
+            user={user}
+            weeklyStreak={weeklyStreak}
+            size="lg"
+            showBadge={true}
+          />
         )}
       </div>
 
       <div className="flex flex-col items-start space-y-1 mb-2">
         <p className="mt-4 text-4xl font-semibold">
-          {user.username}{' '}
-          <span className="text-xl text-white/60 font-medium">
-            (@{user.handle})
-          </span>
+          {formatDisplayName()}{' '}
+          {user.handle && (
+            <span className="text-xl text-white/60 font-medium">
+              (@{user.handle})
+            </span>
+          )}
         </p>
+        {subtitle && (
+          <p className="text-sm italic text-white/60">{subtitle}</p>
+        )}
 
         {(orgNameOverride ||
           teamNameOverride ||

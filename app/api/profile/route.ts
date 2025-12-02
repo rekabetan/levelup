@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const userId = searchParams.get('userId');
+  const userId = searchParams.get('userId')?.trim();
 
   if (!userId) {
     return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
@@ -12,13 +12,14 @@ export async function GET(req: Request) {
 
   const { data, error } = await supabaseAdmin
     .from('profiles')
-    .select('id, username, handle, role, weekly_goal, avatar_url, org_id, team_id')
+    .select('id, username, first_name, last_name, handle, role, weekly_goal, avatar_url, team_id')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
-    console.error('profile error:', error);
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    console.error('profile error or not found', { userId, error });
+    // Return 200 to avoid noisy 404s in client logs; caller can handle null user
+    return NextResponse.json({ user: null, error: 'User not found' });
   }
 
   return NextResponse.json({ user: data });

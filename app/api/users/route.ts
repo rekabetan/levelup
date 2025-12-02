@@ -10,7 +10,7 @@ export async function GET() {
       error: profilesError,
     } = await supabaseAdmin
       .from('profiles')
-      .select('id, username, role, handle, weekly_goal, team_id')
+      .select('id, username, first_name, last_name, role, handle, weekly_goal, team_id')
       .eq('role', 'player')
       .order('username');
 
@@ -94,6 +94,8 @@ export async function GET() {
       return {
         id: p.id,
         username: p.username,
+        first_name: p.first_name ?? null,
+        last_name: p.last_name ?? null,
         role: p.role,
         handle: p.handle ?? null,
         weekly_goal: p.weekly_goal ?? null,

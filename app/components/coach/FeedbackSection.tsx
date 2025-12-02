@@ -9,7 +9,13 @@ type FeedbackItem = {
   body: string;
   created_at: string;
   is_read: boolean;
-  coach?: { username?: string | null } | null;
+  status?: 'draft' | 'submitted';
+  coach?: {
+    username?: string | null;
+    first_name?: string | null;
+    last_name?: string | null;
+    role?: string | null;
+  } | null;
 };
 
 type FeedbackSectionProps = {
@@ -27,8 +33,25 @@ export default function FeedbackSection({
   onShowMore,
   onSelect,
 }: FeedbackSectionProps) {
+  const formatCoachLabel = (coach?: FeedbackItem['coach']) => {
+    if (!coach) return 'Coach';
+
+    const baseRole = coach.role ? coach.role.toLowerCase() : 'coach';
+    const role = 'Coach';
+    const first = coach.first_name?.trim();
+    const lastInitial = coach.last_name?.trim()?.charAt(0)?.toUpperCase();
+
+    if (first) {
+      return lastInitial ? `${role} ${first} ${lastInitial}` : `${role} ${first}`;
+    }
+
+    const username = coach.username?.trim();
+    return username ? `${role} ${username}` : role;
+  };
+
   const currentYear = new Date().getFullYear();
   const filtered = feedbackItems.filter((f) => {
+    if (f.status && f.status !== 'submitted') return false;
     const d = new Date(f.created_at);
     return d.getFullYear() === currentYear;
   });
@@ -79,7 +102,7 @@ export default function FeedbackSection({
                         item.is_read ? 'text-white/70' : 'text-white font-semibold'
                       }`}
                     >
-                      Feedback from {item.coach?.username || 'Coach'}
+                      Feedback from {formatCoachLabel(item.coach)}
                     </p>
                   </div>
                   <span className="text-xs text-white/50 flex-shrink-0">

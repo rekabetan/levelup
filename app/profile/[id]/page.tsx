@@ -8,7 +8,7 @@ type PageProps = {
 
 export default async function OtherProfilePage({ params }: PageProps) {
   // ✅ Await params before using
-  const { id } = await params;
+  const { id: slug } = await params;
 
-  return <OtherProfileClient userId={id} />;
+  return <OtherProfileClient userSlug={slug} />;
 }
